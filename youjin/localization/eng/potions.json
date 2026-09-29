@@ -1,0 +1,7 @@
+{
+  "YOUJIN_POTION_BLESSED_SPRING_POTION.title": "Blessed Spring",
+  "YOUJIN_POTION_BLESSED_SPRING_POTION.description": "Remove a [red]Curse[/red] from your [gold]deck[/gold] (Eternal curses can't be removed). Costs [blue]150[/blue] gold.",
+
+  "YOUJIN_POTION_SMOKE_BOMB_POTION.title": "Smoke Bomb",
+  "YOUJIN_POTION_SMOKE_BOMB_POTION.description": "Vanish: instantly leave this fight ([red]counted as downed[/red] — untargetable, can't play cards). If your team wins you still get rewarded; if the whole team falls, the run ends."
+}

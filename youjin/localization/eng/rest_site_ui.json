@@ -1,0 +1,7 @@
+{
+  "OPTION_YOUJIN_NAP.name": "Catnap",
+  "OPTION_YOUJIN_NAP.description": "Pick a teammate: steal [blue]30%[/blue] of their gold and heal [blue]25%[/blue] of your max HP.",
+
+  "OPTION_YOUJIN_DEEPSLEEP.name": "Deep Sleep",
+  "OPTION_YOUJIN_DEEPSLEEP.description": "Heal to full and gain [blue]+5[/blue] max HP; the price is that one random teammate gets a [red]Poor Sleep[/red] in their [gold]deck[/gold]."
+}

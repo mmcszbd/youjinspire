@@ -1,0 +1,7 @@
+{
+  "OPTION_YOUJIN_NAP.name": "假寐",
+  "OPTION_YOUJIN_NAP.description": "点击一名队友：偷走他 [blue]30%[/blue] 的金币，并回复自身 [blue]25%[/blue] 生命上限。",
+
+  "OPTION_YOUJIN_DEEPSLEEP.name": "酣睡",
+  "OPTION_YOUJIN_DEEPSLEEP.description": "回复至满血，最大生命 [blue]+5[/blue]；代价是随机一名队友的[gold]牌组[/gold]里多一张[red]「睡眠不佳」[/red]。"
+}

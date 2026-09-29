@@ -1,0 +1,42 @@
+﻿{
+  "YOUJIN_EVENT_FAIR_JUDGE_EVENT.title": "The \"Fair\" Judge",
+  "YOUJIN_EVENT_FAIR_JUDGE_EVENT.pages.INITIAL.description": "A self-proclaimed absolutely fair judge blocks your path, eyeing your coin purses and packs.",
+  "YOUJIN_EVENT_FAIR_JUDGE_EVENT.pages.RESULT.description": "The judge bangs the gavel and declares this fair. (You both know what really happened.)",
+
+  "YOUJIN_EVENT_FAIR_JUDGE_EVENT.pages.INITIAL.options.GOLD.title": "My Gold Was Stolen",
+  "YOUJIN_EVENT_FAIR_JUDGE_EVENT.pages.INITIAL.options.GOLD.description": "Only the player with the least [blue]gold[/blue] may choose: take from the richest until both are equal.",
+  "YOUJIN_EVENT_FAIR_JUDGE_EVENT.pages.INITIAL.options.RELIC.title": "My Relic Was Robbed",
+  "YOUJIN_EVENT_FAIR_JUDGE_EVENT.pages.INITIAL.options.RELIC.description": "Only the player with the fewest [gold]relics[/gold] may choose: seize the most recent [gold]relic[/gold] of the one with the most, and receive a fresh copy (they lose it).",
+  "YOUJIN_EVENT_FAIR_JUDGE_EVENT.pages.INITIAL.options.HARMONY.title": "My Team Is Harmonious",
+  "YOUJIN_EVENT_FAIR_JUDGE_EVENT.pages.INITIAL.options.HARMONY.description": "The judge is pleased and awards you [blue]30[/blue] gold.",
+
+  "YOUJIN_EVENT_TRUST_CHALLENGE_EVENT.title": "Trust Challenge",
+  "YOUJIN_EVENT_TRUST_CHALLENGE_EVENT.pages.INITIAL.description": "A bottomless stone hole sits by the road. Carved words read: \"Pay in. If enough of you mean it, everyone is repaid. Bluff, and nothing happens.\"",
+  "YOUJIN_EVENT_TRUST_CHALLENGE_EVENT.pages.SUCCESS.description": "The hole rumbles and coins pour out — everyone gains [blue]150[/blue] gold.",
+  "YOUJIN_EVENT_TRUST_CHALLENGE_EVENT.pages.NOTHING.description": "The hole stays silent. Some meant it, some didn't, and nobody gained anything.",
+  "YOUJIN_EVENT_TRUST_CHALLENGE_EVENT.pages.SHAME.description": "The hole sees through all of you. Everyone receives a [red]Shame[/red].",
+
+  "YOUJIN_EVENT_TRUST_CHALLENGE_EVENT.pages.INITIAL.options.PAID.title": "Pay In",
+  "YOUJIN_EVENT_TRUST_CHALLENGE_EVENT.pages.INITIAL.options.PAID.description": "Hand over [blue]50[/blue] gold. If more than half of you truly do it, everyone gains [blue]150[/blue] gold.",
+  "YOUJIN_EVENT_TRUST_CHALLENGE_EVENT.pages.INITIAL.options.BLUFF.title": "Bluff",
+  "YOUJIN_EVENT_TRUST_CHALLENGE_EVENT.pages.INITIAL.options.BLUFF.description": "Pretend to toss coins in. If everyone bluffs, everyone receives a [red]Shame[/red].",
+
+  "YOUJIN_EVENT_STAND_IN_STONE_EVENT.title": "The Stand-In Stone",
+  "YOUJIN_EVENT_STAND_IN_STONE_EVENT.pages.INITIAL.description": "A humanoid statue stands by the road, coins scattered at its feet. Words are carved on its chest: \"Pushing your pain onto someone else is also a way to live.\"",
+  "YOUJIN_EVENT_STAND_IN_STONE_EVENT.pages.SUCCESS.description": "The statue chuckles. Your [red]curse[/red] now belongs to someone else — who probably doesn't know yet.",
+  "YOUJIN_EVENT_STAND_IN_STONE_EVENT.pages.GOLD.description": "You pocket the gold at the statue's feet. Its expression seems to darken.",
+  "YOUJIN_EVENT_STAND_IN_STONE_EVENT.pages.NOTHING.description": "The statue stays still. Nothing happens.",
+
+  "YOUJIN_EVENT_STAND_IN_STONE_EVENT.pages.INITIAL.options.SHIFT.title": "Touch the Stone",
+  "YOUJIN_EVENT_STAND_IN_STONE_EVENT.pages.INITIAL.options.SHIFT.description": "Give one of your [red]Curses[/red] (Eternal ones included) to a teammate: you lose it, they gain an identical copy.",
+  "YOUJIN_EVENT_STAND_IN_STONE_EVENT.pages.INITIAL.options.GOLD.title": "Take the Coins",
+  "YOUJIN_EVENT_STAND_IN_STONE_EVENT.pages.INITIAL.options.GOLD.description": "Pick up the [blue]57[/blue] gold scattered around the statue.",
+
+  "YOUJIN_EVENT_ARCHITECT_BETRAYAL_EVENT.title": "The Architect's Betrayal",
+  "YOUJIN_EVENT_ARCHITECT_BETRAYAL_EVENT.pages.INITIAL.description": "The Architect sits upon his throne, rolling a thread of light between his fingers. \"One journey, one wish,\" he says, \"but there is more than one of you.\" He lets the thread hang in the air between you. \"Whoever is left standing takes it. Sort it out amongst yourselves.\"",
+  "YOUJIN_EVENT_ARCHITECT_BETRAYAL_EVENT.pages.INITIAL.options.FIGHT.title": "Fight",
+  "YOUJIN_EVENT_ARCHITECT_BETRAYAL_EVENT.pages.INITIAL.options.FIGHT.description": "Decided by vote: it only happens if [blue]more than half[/blue] choose it. Everyone heals to full and triples their max HP, and everyone can be targeted. The Architect only speaks once one of you is left standing.",
+  "YOUJIN_EVENT_ARCHITECT_BETRAYAL_EVENT.pages.INITIAL.options.REFUSE.title": "Don't Fight",
+  "YOUJIN_EVENT_ARCHITECT_BETRAYAL_EVENT.pages.INITIAL.options.REFUSE.description": "Nobody lifts a hand. The decision goes back to the Architect, unchanged.",
+  "YOUJIN_EVENT_ARCHITECT_BETRAYAL_EVENT.pages.FINALE.description": "The thread of light goes out. The Architect leans back on his throne, watching to see who still has the strength to look up."
+}

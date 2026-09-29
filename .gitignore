@@ -1,0 +1,28 @@
+# ── Godot 4+ ── 编辑器缓存、导入产物、导出模板缓存（都能重新生成）
+.godot/
+/android/
+.mono/
+mono_crash.*.json
+
+# ── C# / .NET 构建产物 ──
+bin/
+obj/
+*.user
+
+# ── 本工程的导出 / 部署产物 ──
+# 这些是 `dotnet build` 和 Godot「导出 PCK」的产物；
+# 真正的来源是 Scripts/*.cs 和 youjin/localization/*.json。
+# 游戏 mods\YouJinSpire\ 里用的是 youjin.dll + youjin.pck，那两个文件不进版本库。
+youjin.dll
+youjin.pdb
+youjin.pck
+
+# 之前误导出的整包（工程名叫 UnnamedProject，导出预设 export_path 指向它）
+/UnnamedProject.exe
+/UnnamedProject.console.exe
+/UnnamedProject.pck
+
+# ── 临时 / 草稿（.tmp_il、.tmp_inspect 是本地排查工具，正式那份在 mewmod 工作区）──
+.tmp_*/
+*.tmp
+~$*

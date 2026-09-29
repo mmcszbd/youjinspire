@@ -1,0 +1,7 @@
+{
+  "YOUJIN_POTION_BLESSED_SPRING_POTION.title": "被祝福的泉水",
+  "YOUJIN_POTION_BLESSED_SPRING_POTION.description": "从[gold]卡组[/gold]中选择一张[red]诅咒[/red]删除（永恒诅咒无法删除）。售价 [blue]150[/blue] 金币。",
+
+  "YOUJIN_POTION_SMOKE_BOMB_POTION.title": "烟雾弹",
+  "YOUJIN_POTION_SMOKE_BOMB_POTION.description": "当众失踪：立刻退出这场战斗（[red]视为倒下[/red]，不会被攻击、不能出牌）。队友赢下战斗则照常结算，全队覆没则一局结束。"
+}

@@ -1,0 +1,28 @@
+# 默认按二进制处理，不做行尾 / 编码转换，避免 dll、pck、png 被改坏
+* -text
+
+# 文本文件统一 LF，方便以后换机器或多人协作
+*.cs      text eol=lf
+*.csproj  text eol=lf
+*.sln     text eol=lf
+*.json    text eol=lf
+*.md      text eol=lf
+*.tscn    text eol=lf
+*.tres    text eol=lf
+*.gd      text eol=lf
+*.godot   text eol=lf
+*.cfg     text eol=lf
+*.import  text eol=lf
+
+# 明确标成二进制，让 git diff / merge 别去碰它们
+*.png   binary
+*.jpg   binary
+*.mp3   binary
+*.ogg   binary
+*.wav   binary
+*.dll   binary
+*.exe   binary
+*.pck   binary
+*.so    binary
+*.dylib binary
+*.a     binary

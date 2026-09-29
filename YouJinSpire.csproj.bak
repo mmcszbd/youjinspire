@@ -1,0 +1,61 @@
+<Project Sdk="Godot.NET.Sdk/4.5.1">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <AssemblyName>youjin</AssemblyName>
+    <RootNamespace>YouJin</RootNamespace>
+    <ImplicitUsings>true</ImplicitUsings>
+    <LangVersion>13.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!-- 改成你的杀戮尖塔2目录 -->
+    <Sts2Dir>D:\Slay the Spire 2</Sts2Dir>
+    <Sts2DataDir>$(Sts2Dir)\data_sts2_windows_x86_64</Sts2DataDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="sts2">
+      <HintPath>$(Sts2DataDir)\sts2.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(Sts2DataDir)\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="STS2-RitsuLib">
+    <HintPath>$(Sts2Dir)\mods\STS2-RitsuLib\lib\0.110.0\STS2-RitsuLib.dll</HintPath>
+    <Private>false</Private>
+    </Reference>
+    <!-- BonModConfig：游戏设置里的"模组配置"框架（FreeLoadout / AutoAnthony 等都用它挂设置）。
+         我们只在 YouJinSettings 里通过 try/catch + 独立 Impl 方法使用它，
+         所以玩家就算没装 BonModConfig，本 mod 也能正常加载，只是没有设置界面。 -->
+    <Reference Include="BonModConfig">
+      <HintPath>$(Sts2Dir)\mods\3749062616\BonModConfig.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- 自动复制dll和json -->
+  <Target Name="Copy Mod" AfterTargets="PostBuildEvent">
+    <Message Text="Copying mod to Slay the Spire 2 mods folder..." Importance="high" />
+    <MakeDir Directories="$(Sts2Dir)\mods\" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(Sts2Dir)\mods\$(MSBuildProjectName)\" />
+    <Copy SourceFiles="$(MSBuildProjectName).json" DestinationFolder="$(Sts2Dir)/mods/$(MSBuildProjectName)/" />
+  </Target>
+
+  <!--
+    PCK 用“增量复制”：只有当本地的 mewmod.pck 比 mods 目录里的新时才复制。
+    这样可以避免把过期的 pck 覆盖掉你在 Godot 里导出的新 pck。
+    （更推荐的做法：在 Godot 导出时直接把路径设成
+      D:\Slay the Spire 2\mods\mewmod\mewmod.pck，然后完全不用这一段。）
+  -->
+  <Target Name="Copy Pck If Newer"
+          AfterTargets="Copy Mod"
+          Condition="Exists('youjin.pck')"
+          Inputs="youjin.pck"
+          Outputs="$(Sts2Dir)\mods\$(MSBuildProjectName)\youjin.pck">
+    <Message Text="Copying newer youjin.pck (PCK 文件名必须等于 mod id) ..." Importance="high" />
+    <Copy SourceFiles="youjin.pck"
+          DestinationFolder="$(Sts2Dir)\mods\$(MSBuildProjectName)\" />
+  </Target>
+</Project>

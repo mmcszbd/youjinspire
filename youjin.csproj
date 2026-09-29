@@ -1,0 +1,73 @@
+<Project Sdk="Godot.NET.Sdk/4.5.1">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+
+    <!-- 程序集名 = mod id，产物是 youjin.dll（游戏按 mod id 加载，不能改）。 -->
+    <AssemblyName>youjin</AssemblyName>
+    <RootNamespace>YouJin</RootNamespace>
+
+    <!--
+      注意：这个 csproj 的文件名必须等于 project.godot 里的
+      [dotnet] project/assembly_name（= youjin），因为 Godot 4 只找同名的 csproj。
+      所以文件叫 youjin.csproj，而"程序集名"同样是 youjin。
+
+      但 mod 在游戏里的文件夹和清单文件叫 YouJinSpire，
+      和项目文件名不一致 —— 下面这个属性专门表示"mod 文件夹名"，
+      代替原来会随文件名变化的 $(MSBuildProjectName)。
+    -->
+    <ModFolderName>YouJinSpire</ModFolderName>
+
+    <ImplicitUsings>true</ImplicitUsings>
+    <LangVersion>13.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!-- 改成你的杀戮尖塔2目录 -->
+    <Sts2Dir>D:\Slay the Spire 2</Sts2Dir>
+    <Sts2DataDir>$(Sts2Dir)\data_sts2_windows_x86_64</Sts2DataDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="sts2">
+      <HintPath>$(Sts2DataDir)\sts2.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(Sts2DataDir)\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="STS2-RitsuLib">
+      <HintPath>$(Sts2Dir)\mods\STS2-RitsuLib\lib\0.110.0\STS2-RitsuLib.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- BonModConfig：游戏设置里的"模组配置"框架（FreeLoadout / AutoAnthony 等都用它挂设置）。
+         我们只在 YouJinSettings 里通过 try/catch + 独立 Impl 方法使用它，
+         所以玩家就算没装 BonModConfig，本 mod 也能正常加载，只是没有设置界面。 -->
+    <Reference Include="BonModConfig">
+      <HintPath>$(Sts2Dir)\mods\3749062616\BonModConfig.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- 自动复制 dll 和清单 json 到 mods\YouJinSpire\ -->
+  <Target Name="Copy Mod" AfterTargets="PostBuildEvent">
+    <Message Text="Copying mod to Slay the Spire 2 mods folder..." Importance="high" />
+    <MakeDir Directories="$(Sts2Dir)\mods\" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(Sts2Dir)\mods\$(ModFolderName)\" />
+    <Copy SourceFiles="$(ModFolderName).json" DestinationFolder="$(Sts2Dir)\mods\$(ModFolderName)\" />
+  </Target>
+
+  <!--
+    PCK 用"增量复制"：只有本地 youjin.pck 比 mods 目录里的新时才复制，
+    避免把过期的 pck 覆盖掉刚在 Godot 里导出的新 pck。
+  -->
+  <Target Name="Copy Pck If Newer"
+          AfterTargets="Copy Mod"
+          Condition="Exists('youjin.pck')"
+          Inputs="youjin.pck"
+          Outputs="$(Sts2Dir)\mods\$(ModFolderName)\youjin.pck">
+    <Message Text="Copying newer youjin.pck (PCK 文件名必须等于 mod id) ..." Importance="high" />
+    <Copy SourceFiles="youjin.pck"
+          DestinationFolder="$(Sts2Dir)\mods\$(ModFolderName)\" />
+  </Target>
+</Project>
