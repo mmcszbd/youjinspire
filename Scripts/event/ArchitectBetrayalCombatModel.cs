@@ -20,8 +20,11 @@
 // ============================================================================
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
+using HarmonyLib;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Creatures;
@@ -149,16 +152,25 @@ public sealed class ArchitectBetrayalCombatModel : HookedSingletonModel
         }
     }
 
-    /// <summary>敌人被放进战斗时，把木桩的血拉满（幂等：已经够大就跳过）。</summary>
+    /// <summary>
+    /// 场上有我们的木桩时：标记"这场是背叛战斗"，并把木桩的血拉满
+    /// （199999 是设计值，通常已经够大，这里是兜底）。
+    ///
+    /// ⚠ 这里**只认我们自己的木桩类型**（BetrayalEggMonster）。
+    /// 早期版本是"只要是敌方单位就加血"，一旦 `BetrayalCombatActive` 因为
+    /// 黑屏/中途退出残留在 true，普通怪物也会被加到 99999 血 —— 现在不会了。
+    /// </summary>
     public override async Task AfterCreatureAddedToCombat(Creature creature)
     {
         try
         {
-            if (!ArchitectBetrayalEvent.BetrayalCombatActive)
+            if (creature?.Monster is not BetrayalEggMonster)
                 return;
 
-            if (creature.Side != CombatSide.Enemy || creature.Player is not null)
-                return;
+            // 木桩在场 = 这场就是我们的战斗。顺手把辅助开关点亮，并记住这场战斗。
+            _betrayalCombat = CurrentCombatState;
+            _betrayalCombatConfirmed = true;
+            ArchitectBetrayalEvent.BetrayalCombatActive = true;
 
             await PrepareDummyAsync(creature);
         }
@@ -168,42 +180,181 @@ public sealed class ArchitectBetrayalCombatModel : HookedSingletonModel
         }
     }
 
+    /// <summary>本场战斗里出现过我们的木桩吗（= 这场真的是「建筑师的挑拨」那场）。</summary>
+    private static MegaCrit.Sts2.Core.Combat.ICombatState? _betrayalCombat;
+
+    /// <summary>
+    /// "这场是背叛战斗"的**缓存结果**（不是每次现算）。
+    ///
+    /// ⚠ 这个缓存是必须的，不是优化 —— 起因是一次真实的栈溢出崩溃（0xc00000fd）：
+    ///   `PvpEnemyListPatch` 挂在 `CombatState.Enemies` 的 Postfix 上，它第一句就是读
+    ///   `BetrayalCombatActive`；如果那个属性每次现算"场上有沒有我们的木桩"，
+    ///   就会去遍历 `combat.Enemies` —— 又走回同一个 Postfix → 无限递归 → 爆栈闪退。
+    ///   所以：判定只在"看到木桩/开战确认/清标记"这几个明确时机做一次，结果缓存起来，
+    ///   属性只读缓存，绝不回头碰 `Enemies`。
+    /// </summary>
+    private static bool _betrayalCombatConfirmed;
+
+    /// <summary>`CombatState._enemies` 原始字段（绕开被我们挂过后置的 `Enemies` 属性）。</summary>
+    private static readonly FieldInfo? RawEnemiesField =
+        AccessTools.Field(typeof(MegaCrit.Sts2.Core.Combat.CombatState), "_enemies");
+
+    /// <summary>
+    /// 直接读 `_enemies` 原始字段，**故意绕开被补丁挂过的 `Enemies` 属性**，
+    /// 免得"属性 → 开关 → 属性"这种自环。
+    /// </summary>
+    private static IEnumerable<Creature> RawEnemies(MegaCrit.Sts2.Core.Combat.ICombatState combat)
+    {
+        try
+        {
+            if (combat is MegaCrit.Sts2.Core.Combat.CombatState state
+                && RawEnemiesField?.GetValue(state) is IEnumerable<Creature> raw)
+                return raw;
+        }
+        catch
+        {
+            // 拿不到字段就走下面的兜底
+        }
+
+        // 兜底：只有在"判定时机"才会走到这里（那时 `BetrayalCombatActive` 的缓存是 false，
+        // PvpEnemyListPatch 会立刻 return，不会成环）。
+        return combat.Enemies;
+    }
+
+    /// <summary>这一场上有没有我们的木桩（纯查询，不改任何状态）。</summary>
+    public static bool IsBetrayalCombat(MegaCrit.Sts2.Core.Combat.ICombatState? combat)
+        => combat is not null
+           && RawEnemies(combat).Any(enemy => enemy?.Monster is BetrayalEggMonster);
+
+    /// <summary>
+    /// "现在这个房间就是我们那只卵的遭遇战吗" —— 作为木桩判据的补充。
+    /// 用来兜住一种时序：万一 `BeforeCombatStart` 比"木桩被加进战斗"更早跑，
+    /// 场上还没有木桩，但 `RunState.CurrentRoom` 已经是我们的 EventCombat 了
+    /// （`CombatRoom.ParentEventId` / `Encounter` 就是那只卵）。
+    /// 普通怪物房间里这两条都不成立 → 一定判成"不是我们的战斗"。
+    /// </summary>
+    private static bool CurrentRoomIsOurEncounter(MegaCrit.Sts2.Core.Combat.ICombatState? combat)
+    {
+        try
+        {
+            var player = combat?.Players?.FirstOrDefault();
+            if (player?.RunState?.CurrentRoom is not CombatRoom room)
+                return false;
+
+            return room.Encounter is BetrayalEggEncounter;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 清掉"这场是背叛战斗"的标记 + 开关（自愈）。
+    /// </summary>
+    public static void ClearBetrayalMarkers(string reason)
+    {
+        if (_betrayalCombat is null
+            && !_betrayalCombatConfirmed
+            && !ArchitectBetrayalEvent.BetrayalCombatActive)
+            return;
+
+        _betrayalCombat = null;
+        _betrayalCombatConfirmed = false;
+        ArchitectBetrayalEvent.BetrayalCombatActive = false;
+        Entry.Logger.Info($"建筑师的挑拨：清掉残留的战斗标记（{reason}）");
+    }
+
+    /// <summary>
+    /// 进任何房间时先把"这场是背叛战斗"清掉 —— 真的那场会在战斗布场时
+    /// （AfterCreatureAddedToCombat 看到木桩）重新点亮。
+    /// 这一步很关键：黑屏/中途退出没跑 AfterCombatEnd 的时候，就靠它在下一间房自愈。
+    /// </summary>
+    public override Task BeforeRoomEntered(AbstractRoom room)
+    {
+        try
+        {
+            // ⚠ 只清"非战斗房间"：进战斗房间时**不能清** ——
+            //   因为"队友搬到对面/木桩挪最右"这些补丁跑在这场战斗布场的最开始，
+            //   开关必须在那一刻还是 true。（战斗房间的校验交给 BeforeCombatStart，
+            //   它会在"不是我们这场"时清掉。）
+            if (room is not CombatRoom)
+                ClearBetrayalMarkers(room is null ? "进房间" : $"进入 {room.GetType().Name}");
+        }
+        catch (Exception ex)
+        {
+            Entry.Logger.Info($"建筑师的挑拨：进房间清理标记失败 {ex}");
+        }
+
+        return Task.CompletedTask;
+    }
+
     /// <summary>再多兜一层：战斗正式开始时确认木桩血量。</summary>
     public override async Task BeforeCombatStart()
     {
         try
         {
-            if (!ArchitectBetrayalEvent.BetrayalCombatActive)
-                return;
-
             var combat = CurrentCombatState;
             if (combat is null)
                 return;
+
+            // 唯一判据：场上有没有我们那只木桩（BetrayalEggMonster）。
+            // —— 这样无论事件流程有没有跑、开关有没有残留，都不会误判：
+            //      · 事件正常开打 → 有木桩 → 走下面的加成 ✓
+            //      · 自定义/调试房间直接放这场遭遇 → 也有木桩 ✓
+            //      · 普通怪物房间（开关残留）→ 没木桩 → 清掉残留、什么都不做 ✓
+            if (!IsBetrayalCombat(combat) && !CurrentRoomIsOurEncounter(combat))
+            {
+                ClearBetrayalMarkers("开战了但场上没有我们的木桩");
+                return;
+            }
+
+            _betrayalCombat = combat;
+            _betrayalCombatConfirmed = true;
+            ArchitectBetrayalEvent.BetrayalCombatActive = true;
+
+            // ★ 这一句必须最先做，且不能被任何会抛异常的步骤挡在前面。
+            //   多人局里少了它，第一回合 StartTurn → RecordChecksum 会抛
+            //   "RecordInitialState must be called first"，回放/回合循环当场死掉，
+            //   表现就是黑屏（详见 EnsureReplayInitialState 的注释）。
+            //   之前把它放在最后，而前面新加的"发遗物"里 RelicCmd.Obtain 会碰界面
+            //   （NRun.Instance.GlobalUi.RelicInventory.AnimateRelic），
+            //   一旦那里抛异常就会把它一起跳过 —— 这就是黑屏的来源。
+            EnsureReplayInitialState();
 
             // 玩家对决开始 —— 先把这场战斗的曲子放起来。
             StartPvpMusic();
 
             // 开打之前所有人回满血，并且生命上限翻三倍 —— 这样互相打起来才够久。
             // （这场战斗之后整局就结束了，所以不用恢复原值。）
-            if (!_playersBuffed)
+            // 标记改成"这场战斗"（原来是一个静态 bool）：万一上一场的 AfterCombatEnd 没跑到
+            // （自定义房间、中途退出等），旧的 true 会把这一场的加成吞掉。
+            if (!ReferenceEquals(_buffedCombat, combat))
             {
-                _playersBuffed = true;
+                _buffedCombat = combat;
 
+                // ⛔ 回退：不再发【死斗】遗物，改回"直接改血"（原版那条路）。
+                //   原因（线上实测）：
+                //     ① `RelicCmd.Obtain` 内部会碰界面节点（动画/音效/图鉴标记），
+                //        在"开战那一瞬间"调用很容易抛异常，进而把后面的步骤一起跳过；
+                //     ② 遗物是整局对象，作为"这场战斗"的判据容易牵连后面的战斗；
+                //     ③ 直接改血在客户端/主机上都是纯数值操作，最稳。
                 foreach (var playerCreature in combat.PlayerCreatures)
                 {
-                    var tripled = playerCreature.MaxHp * 3;
-                    await CreatureCmd.SetMaxHp(playerCreature, tripled);
-                    await CreatureCmd.SetCurrentHp(playerCreature, tripled);
-                }
+                    if (playerCreature.Player is not { } owner || owner.Creature is not { } creature)
+                        continue;
 
-                Entry.Logger.Info("建筑师的背叛：所有玩家回满血，生命上限 ×3");
+                    var tripled = creature.MaxHp * 3;
+                    await CreatureCmd.SetMaxHp(creature, tripled);
+                    await CreatureCmd.SetCurrentHp(creature, tripled);
+
+                    Entry.Logger.Info(
+                        $"建筑师的背叛：NetId={owner.NetId} 回满血，生命上限 ×3 → {tripled}");
+                }
             }
 
             foreach (var enemy in combat.Enemies.Where(e => e.Player is null).ToList())
                 await PrepareDummyAsync(enemy);
-
-            // 关键：替原版补上「战斗初始状态记录」，否则多人局第一回合就会卡死。
-            EnsureReplayInitialState();
         }
         catch (Exception ex)
         {
@@ -263,8 +414,8 @@ public sealed class ArchitectBetrayalCombatModel : HookedSingletonModel
         }
     }
 
-    /// <summary>玩家加血只做一次（同一个战斗里 BeforeCombatStart 可能不只来一次）。</summary>
-    private static bool _playersBuffed;
+    /// <summary>已经加过血的那场战斗（同一个战斗里 BeforeCombatStart 可能不只来一次）。</summary>
+    private static object? _buffedCombat;
 
     /// <summary>只剩一个人活着 → 把木桩打飞，让战斗正常结算结束。</summary>
     public override async Task AfterDeath(
@@ -310,8 +461,8 @@ public sealed class ArchitectBetrayalCombatModel : HookedSingletonModel
     public override Task AfterCombatEnd(CombatRoom room)
     {
         StopPvpMusic();
-        ArchitectBetrayalEvent.BetrayalCombatActive = false;
-        _playersBuffed = false;
+        ClearBetrayalMarkers("战斗结束");
+        _buffedCombat = null;
         return Task.CompletedTask;
     }
 

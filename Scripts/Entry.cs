@@ -49,10 +49,18 @@ public class Entry
         // （BonModConfig 那套；没装 BonModConfig 时会自动跳过，不影响玩）。
         YouJinSettings.Register();
 
-        // 商店药水「被祝福的泉水」：注入名字/描述 + 把它固定塞进每间商店的药水位。
+        // 商店药水「被祝福的泉水」：注入名字/描述 + 把它的商店售价固定为 150
+        // （随机稀有药水，不再固定出现在每间商店）。
         BlessedSpringPotion.EnsureLocalized();
         SmokeBombPotion.EnsureLocalized();
         BlessedSpringShopPatch.Apply();
+
+        // 新玩法：多人局里所有玩家共用一条血池、一个钱包。
+        SharedVitalsPatches.Apply();
+        SharedEnergyPatches.Apply();
+
+        // 修佩尔之眼被 Watcher mod 的闸门挡住导致"每回合都送额外回合"的问题。
+        PaelsEyeFixPatches.Apply();
 
         // 建筑师最后那句台词的兜底文本。
         // 注意它走的是 "ancients" 表（建筑师自己的表），不是事件用的 "events" 表。

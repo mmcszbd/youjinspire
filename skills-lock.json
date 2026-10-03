@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "sts2-mod-dev": {
+      "source": "ackness/Slay-the-Spire-2-mod-dev-skills",
+      "sourceType": "github",
+      "skillPath": "skills/sts2-mod-dev/SKILL.md",
+      "computedHash": "57a59c7dc215cd171ad5386bdf6542604e4e8fd133f37ffcf7ec01dc68fd2fce"
+    }
+  }
+}

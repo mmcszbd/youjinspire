@@ -98,6 +98,16 @@ public sealed class ArchitectBetrayalEvent : ModEventTemplate
     /// 背叛战斗是否正在进行。ArchitectBetrayalPatches 用它来决定
     /// 「队友能不能被指定为目标」，ArchitectBetrayalCombatModel 用它来决定
     /// 「要不要给木桩加血 / 要不要提前结束战斗」。
+    ///
+    /// ⚠ 时机很重要：**必须在"玩家选战斗"那一刻就置 true**，
+    /// 因为「队友搬到对面」「木桩挪到最右边」这些补丁跑在**战斗布场的最开始**，
+    /// 比 `BeforeCombatStart` 还早。之前把它改成"要等确认场上有木桩才算"，
+    /// 结果摆位置时开关还是 false → 位置和出牌判定全部失效（线上实测）。
+    ///
+    /// 防泄漏由 `ArchitectBetrayalCombatModel` 负责：
+    ///   · 开战时如果发现场上没有我们的木桩 / 当前房间不是我们那只卵的遭遇，
+    ///     就把它清掉（用原始 `_enemies` 字段判定，不会踩到补丁自环）；
+    ///   · 进非战斗房间（地图/事件/商店…）时也清一次。
     /// </summary>
     public static bool BetrayalCombatActive { get; set; }
 
@@ -200,14 +210,26 @@ public sealed class ArchitectBetrayalEvent : ModEventTemplate
 
         if (goFight)
         {
-            BetrayalCombatActive = true;
+            try
+            {
+                BetrayalCombatActive = true;
 
-            // 每个玩家实例都要调一次，EventCombatSynchronizer 会按槽位收集 ready，
-            // 全员 ready 之后才真的开打。
-            EnterCombatWithoutExitingEvent(
-                ModelDb.Encounter<BetrayalEggEncounter>(),
-                Array.Empty<Reward>(),
-                true);
+                // 每个玩家实例都要调一次，EventCombatSynchronizer 会按槽位收集 ready，
+                // 全员 ready 之后才真的开打。
+                EnterCombatWithoutExitingEvent(
+                    ModelDb.Encounter<BetrayalEggEncounter>(),
+                    Array.Empty<Reward>(),
+                    true);
+            }
+            catch (Exception ex)
+            {
+                // 同步失败（拿不到遭遇、房间流程报错等）→ 立刻把开关放回去，
+                // 否则这个静态开关会一直挂着，之后每场战斗都被当成背叛战斗。
+                BetrayalCombatActive = false;
+                ArchitectBetrayalCombatModel.ClearBetrayalMarkers("开战抛异常");
+                Entry.Logger.Info($"建筑师的背叛：进入战斗失败，已回滚标记 {ex}");
+            }
+
             return;
         }
 
@@ -333,7 +355,7 @@ public sealed class ArchitectBetrayalEvent : ModEventTemplate
 
             table.MergeWith(new Dictionary<string, string>
             {
-                [$"{id}.title"] = chinese ? "建筑师的背叛" : "The Architect's Betrayal",
+                [$"{id}.title"] = chinese ? "建筑师的挑拨" : "The Architect's Provocation",
                 [$"{id}.pages.INITIAL.description"] = chinese
                     ? "建筑师坐在王座上，指尖捻着一缕光。「一趟旅程，一个愿望，」他说，"
                       + "「可惜你们不止一个人。」他松开手，让那缕光悬在你们之间，"

@@ -25,7 +25,34 @@
     <!-- 改成你的杀戮尖塔2目录 -->
     <Sts2Dir>D:\Slay the Spire 2</Sts2Dir>
     <Sts2DataDir>$(Sts2Dir)\data_sts2_windows_x86_64</Sts2DataDir>
+
+    <!--
+      ⚠ 你实际在玩的是 Steam 库里的那份（日志里的
+        "Loading assembly DLL D:\SteamLibrary\steamapps\common\Slay the Spire 2\mods\YouJinSpire\youjin.dll"）。
+      只往 $(Sts2Dir) 复制的话，游戏根本读不到新 dll。
+      所以这里再挂一个"镜像目录"：存在就一起复制，不存在就跳过（换机器也不会报错）。
+    -->
+    <Sts2MirrorDir>D:\SteamLibrary\steamapps\common\Slay the Spire 2</Sts2MirrorDir>
+
   </PropertyGroup>
+
+  <!--
+    ⚠ RitsuLib 0.6.2 起换了引用方式（目录里有 RitsuLib.References.props）：
+      · 设置框架不再在主 dll 里，而是**单独的 STS2-RitsuLib.Settings.dll**，
+        和 STS2-RitsuLib.Shared.dll / STS2-RitsuLib.Ui.dll 一起放在 shared\ 下；
+      · 每个游戏版本一份运行时的兼容壳放在 compat\<游戏版本>\ 下；
+      · 旧的 lib\<版本>\STS2-RitsuLib.dll（单体、几百 KB 到 8MB 那种）是 0.5.x 时代的残留，
+        **不要再引用它** —— 引它编译没问题，但运行期加载的是 0.6.2 的拆分包，
+        类型找不到，设置页就会注册失败（表现：设置界面里没有「友尽尖塔」这一页）。
+
+    所以这里直接导入官方 props（必须同时告诉它用哪个游戏版本，因为 compat\ 下有多份）。
+    以后换游戏版本，只改下面这一行 RitsuLibReferenceTarget 即可。
+  -->
+  <PropertyGroup>
+    <RitsuLibReferenceTarget>0.111.0</RitsuLibReferenceTarget>
+  </PropertyGroup>
+  <Import Project="$(Sts2Dir)\mods\STS2-RitsuLib\RitsuLib.References.props"
+          Condition="Exists('$(Sts2Dir)\mods\STS2-RitsuLib\RitsuLib.References.props')" />
 
   <ItemGroup>
     <Reference Include="sts2">
@@ -34,10 +61,6 @@
     </Reference>
     <Reference Include="0Harmony">
       <HintPath>$(Sts2DataDir)\0Harmony.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-    <Reference Include="STS2-RitsuLib">
-      <HintPath>$(Sts2Dir)\mods\STS2-RitsuLib\lib\0.110.0\STS2-RitsuLib.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <!-- BonModConfig：游戏设置里的"模组配置"框架（FreeLoadout / AutoAnthony 等都用它挂设置）。
@@ -58,6 +81,20 @@
   </Target>
 
   <!--
+    ★★ 以后以这份为准 ★★
+    这是游戏**真正加载**的那份（日志里的
+      "Loading assembly DLL D:\SteamLibrary\steamapps\common\Slay the Spire 2\mods\YouJinSpire\youjin.dll"）。
+    每次构建都会把 dll + 清单同步到这里；pck 走下面的"只在更新时才覆盖"。
+  -->
+  <Target Name="Copy Mod To Mirror"
+          AfterTargets="Copy Mod"
+          Condition="Exists('$(Sts2MirrorDir)\mods\$(ModFolderName)')">
+    <Message Text="Copying mod to the install the game actually loads ($(Sts2MirrorDir))..." Importance="high" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(Sts2MirrorDir)\mods\$(ModFolderName)\" />
+    <Copy SourceFiles="$(ModFolderName).json" DestinationFolder="$(Sts2MirrorDir)\mods\$(ModFolderName)\" />
+  </Target>
+
+  <!--
     PCK 用"增量复制"：只有本地 youjin.pck 比 mods 目录里的新时才复制，
     避免把过期的 pck 覆盖掉刚在 Godot 里导出的新 pck。
   -->
@@ -69,5 +106,16 @@
     <Message Text="Copying newer youjin.pck (PCK 文件名必须等于 mod id) ..." Importance="high" />
     <Copy SourceFiles="youjin.pck"
           DestinationFolder="$(Sts2Dir)\mods\$(ModFolderName)\" />
+  </Target>
+
+  <!-- 同一份 pck 也同步到"游戏真正加载"的那个目录（同样是"只在更新时才覆盖"）。 -->
+  <Target Name="Copy Pck To Mirror If Newer"
+          AfterTargets="Copy Pck If Newer"
+          Condition="Exists('youjin.pck') and Exists('$(Sts2MirrorDir)\mods\$(ModFolderName)')"
+          Inputs="youjin.pck"
+          Outputs="$(Sts2MirrorDir)\mods\$(ModFolderName)\youjin.pck">
+    <Message Text="Copying newer youjin.pck to the install the game actually loads ..." Importance="high" />
+    <Copy SourceFiles="youjin.pck"
+          DestinationFolder="$(Sts2MirrorDir)\mods\$(ModFolderName)\" />
   </Target>
 </Project>

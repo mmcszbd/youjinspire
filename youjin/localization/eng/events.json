@@ -32,7 +32,7 @@
   "YOUJIN_EVENT_STAND_IN_STONE_EVENT.pages.INITIAL.options.GOLD.title": "Take the Coins",
   "YOUJIN_EVENT_STAND_IN_STONE_EVENT.pages.INITIAL.options.GOLD.description": "Pick up the [blue]57[/blue] gold scattered around the statue.",
 
-  "YOUJIN_EVENT_ARCHITECT_BETRAYAL_EVENT.title": "The Architect's Betrayal",
+  "YOUJIN_EVENT_ARCHITECT_BETRAYAL_EVENT.title": "The Architect's Provocation",
   "YOUJIN_EVENT_ARCHITECT_BETRAYAL_EVENT.pages.INITIAL.description": "The Architect sits upon his throne, rolling a thread of light between his fingers. \"One journey, one wish,\" he says, \"but there is more than one of you.\" He lets the thread hang in the air between you. \"Whoever is left standing takes it. Sort it out amongst yourselves.\"",
   "YOUJIN_EVENT_ARCHITECT_BETRAYAL_EVENT.pages.INITIAL.options.FIGHT.title": "Fight",
   "YOUJIN_EVENT_ARCHITECT_BETRAYAL_EVENT.pages.INITIAL.options.FIGHT.description": "Decided by vote: it only happens if [blue]more than half[/blue] choose it. Everyone heals to full and triples their max HP, and everyone can be targeted. The Architect only speaks once one of you is left standing.",

@@ -26,3 +26,13 @@ youjin.pck
 .tmp_*/
 *.tmp
 ~$*
+
+# ── 日志（游戏日志、上传工具日志、排查用的日志副本，都不进版本库）──
+*.log
+
+# ── 工具目录：技能包、权限修复脚本的中间产物 ──
+.agents/
+.acl-repair/
+
+# ── FMOD 编辑器临时产物 ──
+~libGodotFmod*.dll

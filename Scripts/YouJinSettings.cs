@@ -16,9 +16,21 @@
 // 值本身由本文件自己持久化（user://youjin_settings.json），
 // 读不到就一律按"开启"处理，保证默认玩法不受影响。
 //
-// 两个开关：
-//   · gameplay_enabled  —— 整个模组总开关；
-//   · greedy_loot_enabled —— 贪婪模式（补尾刀拿金币）：本场金币+遗物奖励全归击杀者。
+// 玩法是**互斥的模式**（mode），不是一堆并列开关：
+//   · Off    —— 关闭：本 mod 一行都不介入；
+//   · YouJin —— 友尽尖塔：原来的玩法（抢战利品 / 火堆「假寐」「酣睡」/
+//               三个事件 / 「建筑师的背叛」）；
+//   · Shared —— 共享模式：多人共用一条血池 + 一个钱包。
+//               这个模式下**上面那些事件、火堆选项、战利品规则全都不触发**。
+//
+// 另外 mode 下面还挂着几个细开关：
+//   · greedy_loot_enabled —— 贪婪模式（只在 YouJin 模式里有意义）；
+//   · shared_hp_enabled / shared_gold_enabled / shared_energy_enabled —— 共享模式的子开关。
+//
+// ⚠ 联机注意：这些开关是**本机设置**（各人存各人的 user://youjin_settings.json），
+//   不像 together 那样由主机下发。两端开关不一致 → 两端算出来的血量/金币不一样 →
+//   校验和分叉。要开共享就**每个人都开**。
+
 // ============================================================================
 
 using System;
@@ -29,6 +41,19 @@ using STS2RitsuLib.Utils.Persistence;
 
 namespace YouJin.Scripts;
 
+/// <summary>本 mod 的玩法模式（三选一）。</summary>
+public enum YouJinMode
+{
+    /// <summary>关闭：本 mod 完全不介入对局。</summary>
+    Off = 0,
+
+    /// <summary>友尽尖塔：原来的玩法（战利品归击杀者、死亡分钱、火堆假寐/酣睡、三个事件、建筑师的背叛）。</summary>
+    YouJin = 1,
+
+    /// <summary>共享模式：多人共用一条血池和一个钱包；上面的玩法全部不触发。</summary>
+    Shared = 2,
+}
+
 /// <summary>本 mod 的设置项。</summary>
 public static class YouJinSettings
 {
@@ -38,33 +63,54 @@ public static class YouJinSettings
     /// <summary>设置页/分区标题。</summary>
     public const string SectionTitle = "友尽尖塔";
 
-    /// <summary>整个模组的总开关。</summary>
+    /// <summary>玩法模式（三选一）。</summary>
+    public const string ModeKey = "mode";
+
+    /// <summary>旧版本的"总开关"键名 —— 只在读设置时用来做兼容迁移。</summary>
     public const string GameplayKey = "gameplay_enabled";
 
     /// <summary>贪婪模式（补尾刀拿金币）开关。</summary>
     public const string GreedyLootKey = "greedy_loot_enabled";
 
+    /// <summary>共享血量开关（多人局共用一个血池）。</summary>
+    public const string SharedHpKey = "shared_hp_enabled";
+
+    /// <summary>共享金币开关（多人局共用一个钱包）。</summary>
+    public const string SharedGoldKey = "shared_gold_enabled";
+
+    /// <summary>共享能量开关（多人局共用一个能量池）。</summary>
+    public const string SharedEnergyKey = "shared_energy_enabled";
+
     private const string SettingsPageId = "settings";
     private const string SavePath = "user://youjin_settings.json";
 
     private static bool _loaded;
-    private static bool _gameplayEnabled = true;
+    private static YouJinMode _mode = YouJinMode.YouJin;
     private static bool _greedyLootEnabled = true;
+    private static bool _sharedHpEnabled = true;
+    private static bool _sharedGoldEnabled = true;
+    private static bool _sharedEnergyEnabled = true;
 
-    /// <summary>总开关：关掉后本 mod 的玩法全部失效（读不到时按开启）。</summary>
-    public static bool GameplayEnabled
+    /// <summary>玩法模式（读不到时按「友尽尖塔」处理）。</summary>
+    public static YouJinMode Mode
     {
         get
         {
             EnsureLoaded();
-            return _gameplayEnabled;
+            return _mode;
         }
         set
         {
-            _gameplayEnabled = value;
+            _mode = value;
             Save();
         }
     }
+
+    /// <summary>「友尽尖塔」原玩法是否生效（= 模式选了友尽尖塔）。</summary>
+    public static bool GameplayEnabled => Mode == YouJinMode.YouJin;
+
+    /// <summary>「共享模式」是否生效（= 模式选了共享模式）。</summary>
+    public static bool SharedModeEnabled => Mode == YouJinMode.Shared;
 
     /// <summary>贪婪模式：本场战斗的金币+遗物奖励全归击杀者。</summary>
     public static bool GreedyLootEnabled
@@ -81,6 +127,51 @@ public static class YouJinSettings
         }
     }
 
+    /// <summary>共享血量：多人局所有玩家共用一个血池（见 SharedVitals.cs）。</summary>
+    public static bool SharedHpEnabled
+    {
+        get
+        {
+            EnsureLoaded();
+            return _sharedHpEnabled;
+        }
+        set
+        {
+            _sharedHpEnabled = value;
+            Save();
+        }
+    }
+
+    /// <summary>共享金币：多人局所有玩家共用一个钱包。</summary>
+    public static bool SharedGoldEnabled
+    {
+        get
+        {
+            EnsureLoaded();
+            return _sharedGoldEnabled;
+        }
+        set
+        {
+            _sharedGoldEnabled = value;
+            Save();
+        }
+    }
+
+    /// <summary>共享能量：多人局所有玩家共用一个能量池（见 SharedEnergy.cs）。</summary>
+    public static bool SharedEnergyEnabled
+    {
+        get
+        {
+            EnsureLoaded();
+            return _sharedEnergyEnabled;
+        }
+        set
+        {
+            _sharedEnergyEnabled = value;
+            Save();
+        }
+    }
+
     /// <summary>把「友尽尖塔」设置页注册进游戏的设置界面。</summary>
     public static void Register()
     {
@@ -88,27 +179,32 @@ public static class YouJinSettings
         {
             var page = new ModSettingsPageBuilder(ModId, SettingsPageId)
                 .WithTitle(Text("友尽尖塔", "YouJin Spire"))
-                .AddSection("general", section => section
-                    .WithTitle(Text("玩法开关", "Gameplay"))
-                    .AddToggle(
-                        GameplayKey,
-                        Text("启用友尽尖塔", "Enable YouJin Spire"),
+                .AddSection("mode", section => section
+                    .WithTitle(Text("玩法模式", "Game mode"))
+                    .AddEnumChoice(
+                        ModeKey,
+                        Text("模式", "Mode"),
                         ModSettingsBindings.Callback(
                             ModId,
-                            GameplayKey,
-                            () => GameplayEnabled,
-                            value => GameplayEnabled = value,
+                            ModeKey,
+                            () => Mode,
+                            value => Mode = value,
                             Save,
                             SaveScope.Global),
+                        ModeName,
                         Text(
-                            "关掉后：击杀者独吞战利品、死亡分钱、火堆「假寐」「酣睡」，"
-                            + "以及「建筑师的背叛」等事件都不会生效。",
-                            "When off: kill-loot, death gold split, the rest-site options "
-                            + "and the Architect betrayal event all stop working."),
-                        null)
+                            "关闭：不介入。贪婪模式：补刀拿钱和遗物，关底有新宿之战。共享模式：共用血量、金币、能量。"
+                            + "联机时两端要选同一个。",
+                            "Off: stays out of the run. YouJin Spire: kill-loot + events. "
+                            + "Shared: one HP pool, wallet and energy pool. "
+                            + "Both players must pick the same mode."),
+                        ModSettingsChoicePresentation.Stepper))
+                .AddSection("youjin", section => section
+                    .WithTitle(Text("贪婪模式", "Greedy mode"))
+                    .WithVisibleWhen(() => Mode == YouJinMode.YouJin)
                     .AddToggle(
                         GreedyLootKey,
-                        Text("贪婪模式（补尾刀拿金币）", "Greedy mode (last hit takes the gold)"),
+                        Text("补尾刀拿金币", "Last hit takes the gold"),
                         ModSettingsBindings.Callback(
                             ModId,
                             GreedyLootKey,
@@ -117,17 +213,64 @@ public static class YouJinSettings
                             Save,
                             SaveScope.Global),
                         Text(
-                            "开启后：多人局里本场战斗的金币和遗物奖励全部归击杀者。"
-                            + "关掉则按原版各拿各的。",
-                            "When on: in multiplayer, all gold and relic rewards from a combat "
-                            + "go to whoever got the kill. When off, vanilla behaviour."),
+                            "本场战斗的金币和遗物奖励全归击杀者。",
+                            "All gold and relic rewards from a combat go to whoever got the kill."),
+                        null))
+                .AddSection("shared", section => section
+                    .WithTitle(Text("共享模式", "Shared mode"))
+                    .WithVisibleWhen(() => Mode == YouJinMode.Shared)
+                    .AddToggle(
+                        SharedHpKey,
+                        Text("共享血量", "Shared HP"),
+                        ModSettingsBindings.Callback(
+                            ModId,
+                            SharedHpKey,
+                            () => SharedHpEnabled,
+                            value => SharedHpEnabled = value,
+                            Save,
+                            SaveScope.Global),
+                        Text(
+                            "全队共用一管血：是各角色上限之和。",
+                            "One shared HP pool; on a new run it is the sum of everyone's max HP."),
+                        null)
+                    .AddToggle(
+                        SharedGoldKey,
+                        Text("共享金币", "Shared gold"),
+                        ModSettingsBindings.Callback(
+                            ModId,
+                            SharedGoldKey,
+                            () => SharedGoldEnabled,
+                            value => SharedGoldEnabled = value,
+                            Save,
+                            SaveScope.Global),
+                        Text(
+                            "全队共用一个钱包；开局为各角色起始金币之和。",
+                            "One shared wallet; on a new run it is the sum of everyone's gold."),
+                        null)
+                    .AddToggle(
+                        SharedEnergyKey,
+                        Text("共享能量", "Shared energy"),
+                        ModSettingsBindings.Callback(
+                            ModId,
+                            SharedEnergyKey,
+                            () => SharedEnergyEnabled,
+                            value => SharedEnergyEnabled = value,
+                            Save,
+                            SaveScope.Global),
+                        Text(
+                            "全队共用一管能量；每回合补到各人上限之和。",
+                            "One shared energy pool; each turn it refills to the sum of everyone's "
+                            + "max energy (the counter shows e.g. 6/6)."),
                         null))
                 .Build();
 
             ModSettingsRegistry.RegisterModDisplayName(ModId, Text("友尽尖塔", "YouJin Spire"));
             ModSettingsRegistry.Register(page);
 
-            Entry.Logger.Info("设置：已注册「友尽尖塔」设置页（总开关 + 贪婪模式）");
+            Entry.Logger.Info(
+                $"设置：已注册「友尽尖塔」设置页（模式={Mode}；"
+                + $"贪婪={GreedyLootEnabled} 共享血量={SharedHpEnabled} "
+                + $"共享金币={SharedGoldEnabled} 共享能量={SharedEnergyEnabled}）");
         }
         catch (Exception ex)
         {
@@ -138,6 +281,14 @@ public static class YouJinSettings
     /// <summary>按当前语言给一段设置界面文字（设置界面不走本地化文件）。</summary>
     private static ModSettingsText Text(string chinese, string english)
         => ModSettingsText.Dynamic(() => IsChinese ? chinese : english);
+
+    /// <summary>模式选择器上每一项的名字。</summary>
+    private static ModSettingsText ModeName(YouJinMode mode) => mode switch
+    {
+        YouJinMode.Off => Text("关闭", "Off"),
+        YouJinMode.Shared => Text("共享模式", "Shared mode"),
+        _ => Text("贪婪模式", "Greedy mode"),
+    };
 
     private static bool IsChinese
     {
@@ -175,11 +326,23 @@ public static class YouJinSettings
             if (Json.ParseString(text).AsGodotDictionary() is not { } dict)
                 return;
 
-            if (dict.ContainsKey(GameplayKey))
-                _gameplayEnabled = dict[GameplayKey].AsBool();
+            // 新模式优先；老设置文件里只有 gameplay_enabled，按它迁移。
+            if (dict.ContainsKey(ModeKey))
+                _mode = (YouJinMode)dict[ModeKey].AsInt32();
+            else if (dict.ContainsKey(GameplayKey))
+                _mode = dict[GameplayKey].AsBool() ? YouJinMode.YouJin : YouJinMode.Off;
 
             if (dict.ContainsKey(GreedyLootKey))
                 _greedyLootEnabled = dict[GreedyLootKey].AsBool();
+
+            if (dict.ContainsKey(SharedHpKey))
+                _sharedHpEnabled = dict[SharedHpKey].AsBool();
+
+            if (dict.ContainsKey(SharedGoldKey))
+                _sharedGoldEnabled = dict[SharedGoldKey].AsBool();
+
+            if (dict.ContainsKey(SharedEnergyKey))
+                _sharedEnergyEnabled = dict[SharedEnergyKey].AsBool();
         }
         catch (Exception ex)
         {
@@ -194,8 +357,11 @@ public static class YouJinSettings
         {
             var dict = new Godot.Collections.Dictionary
             {
-                { GameplayKey, _gameplayEnabled },
+                { ModeKey, (int)_mode },
                 { GreedyLootKey, _greedyLootEnabled },
+                { SharedHpKey, _sharedHpEnabled },
+                { SharedGoldKey, _sharedGoldEnabled },
+                { SharedEnergyKey, _sharedEnergyEnabled },
             };
 
             using var file = Godot.FileAccess.Open(SavePath, Godot.FileAccess.ModeFlags.Write);

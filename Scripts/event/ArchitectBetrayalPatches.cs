@@ -26,9 +26,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using HarmonyLib;
 using Godot;
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Context;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Ancients;
@@ -43,6 +45,7 @@ using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
+using MegaCrit.Sts2.Core.Saves;
 
 namespace YouJin.Scripts;
 
@@ -65,6 +68,8 @@ internal static class ArchitectBetrayalPatches
         PatchOne(harmony, typeof(TeammatePotionTargetingPatch), "药水放开队友目标");
         PatchOne(harmony, typeof(TeammateAoeTargetingPatch), "群体卡带上队友");
         PatchOne(harmony, typeof(PvpEnemyListPatch), "出牌瞬间把队友算成敌人");
+        PatchOne(harmony, typeof(TeammateStunEndsTurnPatch), "眩晕玩家改成结束回合");
+        PatchOne(harmony, typeof(EventSeenGuardPatch), "存档保护：非事件不写进已发现事件");
     }
 
     private static void PatchOne(Harmony harmony, Type type, string label)
@@ -442,6 +447,13 @@ internal static class TeammatePotionTargetingPatch
 /// 所以这里改成用 ActionExecutor.CurrentlyRunningAction 反查"正在打这张牌的人"：
 /// 这个动作在所有客户端上是同一个，排除结果自然一致。
 /// 万一拿不到当前动作（纯 UI 预览之类），就谁都不过滤 —— 宁可多算，也绝不让各端结果分叉。
+///
+/// 【为什么要按 OwnerId 而不是只认 PlayCardAction】
+/// 充能球的**回合结束被动**（闪电/暗球/玻璃球）不是靠"出牌"触发的，
+/// 那时候正在跑的动作是 EndPlayerTurnAction —— 它不是 PlayCardAction，
+/// 早先那版只会得到 caster = null，于是"谁都不排除"，这份列表里就只有木桩、
+/// 没有队友可选（木桩又被判定成不可打击）→ 表现成"球空转 / 球瞄木桩"。
+/// 改成和 ⑪ 一样按 action.OwnerId 认人，就能覆盖"结束回合"这条路。
 /// </summary>
 [HarmonyPatch(typeof(CombatState), nameof(CombatState.HittableEnemies), MethodType.Getter)]
 internal static class TeammateAoeTargetingPatch
@@ -456,11 +468,14 @@ internal static class TeammateAoeTargetingPatch
             if (__instance is null)
                 return;
 
-            // 正在执行的那个动作如果是"打牌"，就把它的人找出来，免得他打到自己。
+            // 正在执行的那个动作是谁发的，就把他找出来，免得他打到自己。
+            // （用 OwnerId 而不是只认 PlayCardAction，理由见上面那段注释。）
             Player? caster = null;
             try
             {
-                caster = (RunManager.Instance?.ActionExecutor?.CurrentlyRunningAction as PlayCardAction)?.Player;
+                var action = RunManager.Instance?.ActionExecutor?.CurrentlyRunningAction;
+                if (action is not null)
+                    caster = __instance.Players.FirstOrDefault(player => player.NetId == action.OwnerId);
             }
             catch
             {
@@ -710,6 +725,20 @@ internal static class PvpEnemyListPatch
 
             List<Creature>? merged = null;
 
+            // ⛔ 绝对不要把**木桩**从 Enemies 里摘掉！（10/2 试过，线上炸了）
+            //    战斗结束判定是：Enemies.Any(c => c.IsAlive && c.IsPrimaryEnemy)，
+            //    而 IsPrimaryEnemy 要求 Side == Enemy —— 队友是 Player 侧，永远不算。
+            //    把木桩摘掉之后，出牌后那次胜负检查看到的就是"敌人全灭"，
+            //    于是**战斗在第一张牌结束后立刻判胜结束**，玩家表现为"打不了牌"。
+            //
+            //    当初摘它是想让充能球去打队友，其实完全没必要：
+            //      · 闪电球的目标列表用的是 GetOpponentsOf → Enemies，但外面还套了
+            //        `.Where(c => c.IsHittable)`，而木桩被我们设成**不可打击**
+            //        （ArchitectBetrayalCombatModel.ShouldAllowHitting 返回 false），
+            //        所以它本来就不会被球选中 ✓
+            //      · 暗球/玻璃球走 HittableEnemies，同样被 IsHittable 过滤掉 ✓
+            //    所以只要"把队友加进来"这一步就够了。
+            // ② 把队友加进来（原逻辑）
             foreach (var ally in __instance.Allies)
             {
                 if (ally is null || !ally.IsAlive)
@@ -720,7 +749,8 @@ internal static class PvpEnemyListPatch
                 if (owner is null || owner.NetId == caster.NetId)
                     continue;
 
-                if (__result.Contains(ally))
+                var current = merged ?? __result;
+                if (current.Contains(ally))
                     continue;
 
                 merged ??= new List<Creature>(__result);
@@ -733,6 +763,138 @@ internal static class PvpEnemyListPatch
         catch (Exception ex)
         {
             Entry.Logger.Info($"建筑师的背叛：出牌瞬间改写敌方列表失败 {ex}");
+        }
+    }
+}
+
+/// <summary>
+/// ⑫ 玩家对决里"眩晕玩家"改成"让该玩家结束回合"。
+/// ----------------------------------------------------------------------------
+/// 起因：原版「吹哨」(Models.Cards.Whistle) 的效果是"造成伤害，然后眩晕目标"，
+/// 而眩晕的唯一入口 CreatureCmd.Stun → Creature.StunInternal 第一句就是
+///     if (Monster is null) throw new InvalidOperationException("Can't stun a player.");
+/// 玩家没有 Monster —— 所以自从我们放开"队友可以当目标"之后，吹哨打队友必定抛异常：
+/// 伤害已经打进去了、眩晕这句一炸，卡牌 OnPlay 整段中断，后面的收尾全没了。
+///
+/// 现在改成：背叛战斗里只要有人要眩晕**玩家**，就把这次眩晕换成
+///     PlayerCmd.EndTurn(player, false, null)
+/// 也就是"这名玩家立刻结束回合"。这个调法是照抄原版的 ——
+/// CreatureCmd.Kill 里对一个死掉的玩家就是这么干的
+/// （`PlayerCmd.EndTurn(deadPlayer, false, null)`，见 sts2.dll 的 &lt;Kill&gt;d__14）。
+///
+/// 两个细节：
+///   · Prefix 必须自己把 __result 设成 Task.CompletedTask。原方法返回 Task，
+///     跳过原版就是返回 null，而调用方（吹哨的 OnPlay）立刻就会 GetAwaiter()，
+///     少这一句就从"抛 Can't stun a player"变成"抛 NullReferenceException"。
+///   · 只在 BetrayalCombatActive 时接管；其它场合一律维持原版行为。
+/// </summary>
+[HarmonyPatch]
+internal static class TeammateStunEndsTurnPatch
+{
+    /// <summary>CreatureCmd 里所有叫 Stun 的重载（原版两个）。</summary>
+    private static IEnumerable<MethodBase> TargetMethods()
+    {
+        foreach (var method in typeof(CreatureCmd).GetMethods(BindingFlags.Public | BindingFlags.Static))
+        {
+            if (string.Equals(method.Name, nameof(CreatureCmd.Stun), StringComparison.Ordinal))
+                yield return method;
+        }
+    }
+
+    /// <summary>参数用 __0（位置参数），免得猜原方法第一个参数叫什么。</summary>
+    private static bool Prefix(Creature __0, ref Task __result)
+    {
+        try
+        {
+            if (!ArchitectBetrayalEvent.BetrayalCombatActive)
+                return true;
+
+            var player = __0?.Player;
+            if (player is null)
+                return true; // 真的眩晕怪物 —— 走原版
+
+            // 照抄原版「虚空形态」那张牌的做法（Cards.VoidForm.OnPlay 的最后一句）：
+            //     await PowerCmd.Apply<VoidFormPower>(...);
+            //     PlayerCmd.EndTurn(card.Owner, false, null);      // ← 就是 false
+            // 它就是"打完这张牌直接结束出牌者回合"的，所以眩晕队友也走同一个调用。
+            //
+            // 那个 bool 的去向核对过：PlayerCmd.EndTurn → SetReadyToEndTurn(玩家, bool, Func)
+            //   → 触发 PlayerEndedTurn(玩家, bool)，而唯一的消费点
+            //     NEndTurnButton.AfterPlayerEndedTurn 里那个分支
+            //     （flag = (还没全员结束 ? 我还能行动 : false) && bool）**只对本地玩家生效**，
+            //   对"被眩晕的队友"没有任何影响 —— 两种写法都会真的结束回合。
+            //   （对比：结束回合按钮自己走 EndPlayerTurnAction → EndTurn(player, true, null)。）
+            var state = player.PlayerCombatState;
+            if (state is null)
+                return true;
+
+            // 战斗已经在收尾（敌方全灭那种）：结束回合没意义，而且**绝不能**放回原版
+            // —— 原版对玩家会抛 "Can't stun a player"。所以这里直接吞掉。
+            if (CombatManager.Instance?.IsEnding == true)
+            {
+                __result = Task.CompletedTask;
+                Entry.Logger.Info(
+                    $"建筑师的背叛：战斗收尾中，「眩晕玩家」直接忽略（NetId={player.NetId}）");
+                return false;
+            }
+
+            var alreadyEnded = CombatManager.Instance?.IsPlayerReadyToEndTurn(player) ?? false;
+            PlayerCmd.EndTurn(player, false, null);
+            __result = Task.CompletedTask;
+
+            Entry.Logger.Info(
+                $"建筑师的背叛：把「眩晕玩家」改成「该玩家结束回合」（NetId={player.NetId}，"
+                + $"回合 {state.TurnNumber}，之前已结束过={alreadyEnded}）");
+
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Entry.Logger.Info($"建筑师的背叛：眩晕改结束回合失败（按原版处理）{ex}");
+            return true;
+        }
+    }
+}
+
+/// <summary>
+/// ⑬ 存档保护：**不是事件的东西，不许写进"已发现事件"**。
+/// ----------------------------------------------------------------------------
+/// 背景（一次真实的"游戏打不开"事故）：
+///   我们的木桩遭遇声明成 `RoomType.Event`（这样事件战斗的背景/流程才正常，见
+///   BetrayalEggEncounter.RoomType 的注释），而原版会按 RoomType 把"事件房"的 id
+///   记进进度存档 `discovered_events`：
+///       ProgressSaveManager.UpdateWithRunData → ProgressState.MarkEventAsSeen(id)
+///   于是存档里出现了 `"ENCOUNTER.YOUJIN_ENCOUNTER_BETRAYAL_EGG_ENCOUNTER"`。
+///   而启动读档时那份列表是**当 `EventModel` 用的**：
+///       InvalidCastException: Unable to cast 'BetrayalEggEncounter' to 'EventModel'
+///   异常发生在 NGame.GameStartup() → 游戏直接起不来。
+///
+/// 修法：在写入口上挡一道 —— 只有当这个 id 真的能解析成 `EventModel` 时才放行。
+///   这样"RoomType 写成 Event 的遭遇"再也不会污染存档，事件战斗本身也不受影响 ✓。
+///   （原版事件都是 EventModel，所以对原版内容零影响。）
+/// </summary>
+[HarmonyPatch(typeof(ProgressState), nameof(ProgressState.MarkEventAsSeen))]
+internal static class EventSeenGuardPatch
+{
+    private static bool Prefix(ModelId id, ref bool __result)
+    {
+        try
+        {
+            if (ModelDb.GetByIdOrNull<EventModel>(id) is not null)
+                return true; // 真的是事件 —— 走原版
+
+            __result = false;
+
+            Entry.Logger.Info(
+                $"存档保护：拦下一条不是事件的 id（{id}）—— 不写进 discovered_events，"
+                + "否则下次启动会因 InvalidCastException 打不开游戏");
+
+            return false; // 跳过原方法
+        }
+        catch (Exception ex)
+        {
+            Entry.Logger.Info($"存档保护：判定失败（按原版放行）{ex}");
+            return true;
         }
     }
 }
