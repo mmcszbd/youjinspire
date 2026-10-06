@@ -276,7 +276,8 @@ public class CombatLootTracker : HookedSingletonModel
         if (pool.Count == 0)
             return null;
 
-        var rng = combat?.RunState?.Rng?.GetRng(RunRngType.Niche);
+        // ⚠ 同上：用具名属性 Niche（0.107 / 0.111 双版本通用）
+        var rng = combat?.RunState?.Rng?.Niche;
         var index = rng is not null ? rng.NextInt(0, pool.Count) : 0;
         return pool[index];
     }
@@ -398,7 +399,15 @@ public class CombatLootSplitter : HookedSingletonModel
     /// 每个玩家的奖励列表即将展示给本人时各调用一次。
     /// 所有玩家的奖励列表都已经生成完毕，所以这时候奖池一定是完整的。
     /// 我们在击杀者这一份里补上合并后的金币和遗物（新建 Reward，归属写击杀者）。
+    ///
+    /// ⚠ 这个钩子（BeforeCombatRewardOffered）**只有 0.108+ 才有** ——
+    ///    0.107 的构建（`-c Debug107`，会定义 DEBUG107 宏）里没有它，所以整段被条件编译掉：
+    ///    → 0.107 上"补刀分赃"暂时不生效（其它玩法不受影响）。
+    ///    0.107 的等价做法（以后要补的话）：Harmony 前缀挂在 `CombatRoom.OfferRoomEndRewards`，
+    ///    用 `ExtraRewards` / `AddExtraReward(玩家, 奖励)` 把合并后的奖池加给击杀者，
+    ///    同时把其它玩家那份的金币/遗物奖励移除。
     /// </summary>
+#if !DEBUG107
     public override Task BeforeCombatRewardOffered(RewardsSet rewards, CombatRoom room)
     {
         if (!YouJinSettings.GameplayEnabled || !YouJinSettings.GreedyLootEnabled)
@@ -434,4 +443,5 @@ public class CombatLootSplitter : HookedSingletonModel
 
         return Task.CompletedTask;
     }
+#endif
 }

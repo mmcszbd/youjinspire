@@ -876,17 +876,20 @@ internal static class TeammateStunEndsTurnPatch
 [HarmonyPatch(typeof(ProgressState), nameof(ProgressState.MarkEventAsSeen))]
 internal static class EventSeenGuardPatch
 {
-    private static bool Prefix(ModelId id, ref bool __result)
+    // ⚠ 参数一律用 __0（位置参数）：原方法的参数名是 `eventId` 而不是 `id`，
+    //    写名字会让 Harmony 直接报 "Parameter ... not found" 而**整个补丁装不上**
+    //    （踩过：日志里显示"存档保护补丁安装失败"，保护静默失效）。
+    private static bool Prefix(ModelId __0, ref bool __result)
     {
         try
         {
-            if (ModelDb.GetByIdOrNull<EventModel>(id) is not null)
+            if (ModelDb.GetByIdOrNull<EventModel>(__0) is not null)
                 return true; // 真的是事件 —— 走原版
 
             __result = false;
 
             Entry.Logger.Info(
-                $"存档保护：拦下一条不是事件的 id（{id}）—— 不写进 discovered_events，"
+                $"存档保护：拦下一条不是事件的 id（{__0}）—— 不写进 discovered_events，"
                 + "否则下次启动会因 InvalidCastException 打不开游戏");
 
             return false; // 跳过原方法

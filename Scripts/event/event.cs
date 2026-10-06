@@ -202,7 +202,8 @@ public sealed class FairJudgeEvent : ModEventTemplate
         if (tied.Count == 1)
             return tied[0];
 
-        var rng = Owner?.RunState?.Rng?.GetRng(RunRngType.Niche);
+        // ⚠ 同上：用具名属性 Niche（0.107 / 0.111 双版本通用）
+        var rng = Owner?.RunState?.Rng?.Niche;
         var index = rng is not null ? rng.NextInt(0, tied.Count) : 0;
         return tied[index];
     }

@@ -33,6 +33,9 @@ public class RewardProbe : HookedSingletonModel
     }
 
     // ② 奖励即将展示
+    // ⚠ 这个钩子（BeforeCombatRewardOffered）**只有 0.108+ 才有**，
+    //    0.107 的构建（-c Debug107，会定义 DEBUG107）里没有它 → 条件编译掉。
+#if !DEBUG107
     public override Task BeforeCombatRewardOffered(RewardsSet rewards, CombatRoom room)
     {
         var gold = rewards.Rewards.OfType<GoldReward>().Sum(g => g.Amount);
@@ -45,6 +48,7 @@ public class RewardProbe : HookedSingletonModel
 
         return Task.CompletedTask;
     }
+#endif
 
     private static string Describe(IEnumerable<Reward>? rewards)
     {

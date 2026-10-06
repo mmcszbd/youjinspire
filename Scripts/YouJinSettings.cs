@@ -52,6 +52,9 @@ public enum YouJinMode
 
     /// <summary>共享模式：多人共用一条血池和一个钱包；上面的玩法全部不触发。</summary>
     Shared = 2,
+
+    /// <summary>任务模式：每人每层 3 个任务，完成度在打完本层 Boss 的奖励里结算。</summary>
+    Quest = 3,
 }
 
 /// <summary>本 mod 的设置项。</summary>
@@ -81,6 +84,9 @@ public static class YouJinSettings
     /// <summary>共享能量开关（多人局共用一个能量池）。</summary>
     public const string SharedEnergyKey = "shared_energy_enabled";
 
+    /// <summary>任务模式：右上角任务面板开关。</summary>
+    public const string QuestPanelKey = "quest_panel_enabled";
+
     private const string SettingsPageId = "settings";
     private const string SavePath = "user://youjin_settings.json";
 
@@ -90,6 +96,7 @@ public static class YouJinSettings
     private static bool _sharedHpEnabled = true;
     private static bool _sharedGoldEnabled = true;
     private static bool _sharedEnergyEnabled = true;
+    private static bool _questPanelEnabled = true;
 
     /// <summary>玩法模式（读不到时按「友尽尖塔」处理）。</summary>
     public static YouJinMode Mode
@@ -111,6 +118,9 @@ public static class YouJinSettings
 
     /// <summary>「共享模式」是否生效（= 模式选了共享模式）。</summary>
     public static bool SharedModeEnabled => Mode == YouJinMode.Shared;
+
+    /// <summary>「任务模式」是否生效（= 模式选了任务模式）。</summary>
+    public static bool QuestModeEnabled => Mode == YouJinMode.Quest;
 
     /// <summary>贪婪模式：本场战斗的金币+遗物奖励全归击杀者。</summary>
     public static bool GreedyLootEnabled
@@ -172,6 +182,21 @@ public static class YouJinSettings
         }
     }
 
+    /// <summary>任务模式：是否在右上角显示任务面板。</summary>
+    public static bool QuestPanelEnabled
+    {
+        get
+        {
+            EnsureLoaded();
+            return _questPanelEnabled;
+        }
+        set
+        {
+            _questPanelEnabled = value;
+            Save();
+        }
+    }
+
     /// <summary>把「友尽尖塔」设置页注册进游戏的设置界面。</summary>
     public static void Register()
     {
@@ -193,10 +218,12 @@ public static class YouJinSettings
                             SaveScope.Global),
                         ModeName,
                         Text(
-                            "关闭：不介入。贪婪模式：补刀拿钱和遗物，关底有新宿之战。共享模式：共用血量、金币、能量。"
+                            "关闭：不介入。贪婪模式：补刀拿钱和遗物，关底有新宿之战。"
+                            + "共享模式：共用血量、金币、能量。任务模式：每人每层 3 个任务，关底结算。"
                             + "联机时两端要选同一个。",
                             "Off: stays out of the run. YouJin Spire: kill-loot + events. "
                             + "Shared: one HP pool, wallet and energy pool. "
+                            + "Quest: everyone gets 3 tasks per act, paid out with the boss rewards. "
                             + "Both players must pick the same mode."),
                         ModSettingsChoicePresentation.Stepper))
                 .AddSection("youjin", section => section
@@ -262,6 +289,23 @@ public static class YouJinSettings
                             "One shared energy pool; each turn it refills to the sum of everyone's "
                             + "max energy (the counter shows e.g. 6/6)."),
                         null))
+                .AddSection("quest", section => section
+                    .WithTitle(Text("任务模式", "Quest mode"))
+                    .WithVisibleWhen(() => Mode == YouJinMode.Quest)
+                    .AddToggle(
+                        QuestPanelKey,
+                        Text("显示任务面板", "Show quest panel"),
+                        ModSettingsBindings.Callback(
+                            ModId,
+                            QuestPanelKey,
+                            () => QuestPanelEnabled,
+                            value => QuestPanelEnabled = value,
+                            Save,
+                            SaveScope.Global),
+                        Text(
+                            "在屏幕右上角显示本层的 3 个任务和进度。",
+                            "Shows this act's three quests and their progress in the top-right corner."),
+                        null))
                 .Build();
 
             ModSettingsRegistry.RegisterModDisplayName(ModId, Text("友尽尖塔", "YouJin Spire"));
@@ -270,7 +314,8 @@ public static class YouJinSettings
             Entry.Logger.Info(
                 $"设置：已注册「友尽尖塔」设置页（模式={Mode}；"
                 + $"贪婪={GreedyLootEnabled} 共享血量={SharedHpEnabled} "
-                + $"共享金币={SharedGoldEnabled} 共享能量={SharedEnergyEnabled}）");
+                + $"共享金币={SharedGoldEnabled} 共享能量={SharedEnergyEnabled} "
+                + $"任务面板={QuestPanelEnabled}）");
         }
         catch (Exception ex)
         {
@@ -287,6 +332,7 @@ public static class YouJinSettings
     {
         YouJinMode.Off => Text("关闭", "Off"),
         YouJinMode.Shared => Text("共享模式", "Shared mode"),
+        YouJinMode.Quest => Text("任务模式", "Quest mode"),
         _ => Text("贪婪模式", "Greedy mode"),
     };
 
@@ -343,6 +389,9 @@ public static class YouJinSettings
 
             if (dict.ContainsKey(SharedEnergyKey))
                 _sharedEnergyEnabled = dict[SharedEnergyKey].AsBool();
+
+            if (dict.ContainsKey(QuestPanelKey))
+                _questPanelEnabled = dict[QuestPanelKey].AsBool();
         }
         catch (Exception ex)
         {
@@ -362,6 +411,7 @@ public static class YouJinSettings
                 { SharedHpKey, _sharedHpEnabled },
                 { SharedGoldKey, _sharedGoldEnabled },
                 { SharedEnergyKey, _sharedEnergyEnabled },
+                { QuestPanelKey, _questPanelEnabled },
             };
 
             using var file = Godot.FileAccess.Open(SavePath, Godot.FileAccess.ModeFlags.Write);

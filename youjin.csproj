@@ -27,12 +27,14 @@
     <Sts2DataDir>$(Sts2Dir)\data_sts2_windows_x86_64</Sts2DataDir>
 
     <!--
-      ⚠ 你实际在玩的是 Steam 库里的那份（日志里的
-        "Loading assembly DLL D:\SteamLibrary\steamapps\common\Slay the Spire 2\mods\YouJinSpire\youjin.dll"）。
-      只往 $(Sts2Dir) 复制的话，游戏根本读不到新 dll。
-      所以这里再挂一个"镜像目录"：存在就一起复制，不存在就跳过（换机器也不会报错）。
+      ⚠ 两份游戏装的是**不同游戏版本**，各自的 dll 不能混用：
+        · D:\Slay the Spire 2                                    → 0.111.0（默认配置 Debug/Release）
+        · D:\SteamLibrary\steamapps\common\Slay the Spire 2      → 0.107.1（配置 Debug107/Release107）
+      所以**不再做"互相镜像复制"**（否则编 0.111 会把 0.107 那份的 dll 覆盖掉，
+      那边一启动就是各种黑屏/功能失效）。
+      要往别的目录多复制一份时，用命令行指定：/p:Sts2MirrorDir="<路径>"
     -->
-    <Sts2MirrorDir>D:\SteamLibrary\steamapps\common\Slay the Spire 2</Sts2MirrorDir>
+    <Sts2MirrorDir Condition="'$(Sts2MirrorDir)' == ''"></Sts2MirrorDir>
 
   </PropertyGroup>
 
@@ -50,6 +52,24 @@
   -->
   <PropertyGroup>
     <RitsuLibReferenceTarget>0.111.0</RitsuLibReferenceTarget>
+  </PropertyGroup>
+
+  <!--
+    ★ 多版本编译：同一份源码，按"配置名"各出一份 dll
+        Debug / Release        → 游戏 0.111.0（D:\Slay the Spire 2）
+        Debug107 / Release107  → 游戏 0.107.1（Steam 库里那份）
+      用法：
+        dotnet build youjin.csproj -c Debug       ← 编 0.111，部署到 D:\Slay the Spire 2
+        dotnet build youjin.csproj -c Debug107    ← 编 0.107，部署到 Steam 那份
+      ⚠ 两个版本的 dll 不能混用：0.107 的客户端 + 0.111 的 dll（或反过来）会出现
+        各种莫名其妙的问题（黑屏、加入失败、功能失效）。发布/拷给别人时按版本分开发。
+  -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug107' or '$(Configuration)' == 'Release107'">
+    <Sts2Dir>D:\SteamLibrary\steamapps\common\Slay the Spire 2</Sts2Dir>
+    <Sts2DataDir>$(Sts2Dir)\data_sts2_windows_x86_64</Sts2DataDir>
+    <!-- 这份本身就是"要部署的目标"，不要再镜像到别的安装（否则会覆盖 0.111 那份） -->
+    <Sts2MirrorDir></Sts2MirrorDir>
+    <RitsuLibReferenceTarget>0.107.1</RitsuLibReferenceTarget>
   </PropertyGroup>
   <Import Project="$(Sts2Dir)\mods\STS2-RitsuLib\RitsuLib.References.props"
           Condition="Exists('$(Sts2Dir)\mods\STS2-RitsuLib\RitsuLib.References.props')" />

@@ -50,7 +50,13 @@ internal static class PlayerTargeting
                 return null;
 
             var origin = targetManager.GetViewport()?.GetVisibleRect().Size / 2f ?? Vector2.Zero;
-            var usingController = NControllerManager.Instance?.IsUsingDirectionalNavigation == true;
+        // ⚠ 0.107 的 NControllerManager 没有 IsUsingDirectionalNavigation（0.108+ 才有），
+        //    只有更粗的 IsUsingController → 按版本分开写。
+#if DEBUG107
+        var usingController = NControllerManager.Instance?.IsUsingController == true;
+#else
+        var usingController = NControllerManager.Instance?.IsUsingDirectionalNavigation == true;
+#endif
 
             targetManager.StartTargeting(
                 TargetType.AnyPlayer,

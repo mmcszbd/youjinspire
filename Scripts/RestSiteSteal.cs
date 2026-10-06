@@ -190,7 +190,12 @@ public class NapRestSiteModel : HookedSingletonModel
                 ? Vector2.Zero
                 : button.GlobalPosition + button.Size / 2f;
 
-            var usingController = NControllerManager.Instance?.IsUsingDirectionalNavigation == true;
+        // ⚠ 同上：0.107 只有 IsUsingController
+#if DEBUG107
+        var usingController = NControllerManager.Instance?.IsUsingController == true;
+#else
+        var usingController = NControllerManager.Instance?.IsUsingDirectionalNavigation == true;
+#endif
 
             targetManager.StartTargeting(
                 TargetType.AnyPlayer,

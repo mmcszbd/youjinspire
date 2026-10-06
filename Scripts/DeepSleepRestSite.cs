@@ -123,7 +123,9 @@ public class DeepSleepRestSiteModel : HookedSingletonModel
             return;
         }
 
-        var rng = run.Rng?.GetRng(RunRngType.Niche);
+        // ⚠ 用"具名属性"Niche，而不是 GetRng(RunRngType.Niche)：
+        //    GetRng 在 0.107 里是 private（0.108+ 才公开），而 Niche 属性两个版本都有 ✓
+        var rng = run.Rng?.Niche;
         var index = rng is not null ? rng.NextInt(0, candidates.Count) : 0;
         var victim = candidates[index];
 

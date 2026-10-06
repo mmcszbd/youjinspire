@@ -4,6 +4,7 @@ using MegaCrit.Sts2.Core.Modding;
 using MegaCrit.Sts2.Core.Models;
 using STS2RitsuLib;
 using STS2RitsuLib.Interop;
+using YouJin.Scripts.Quest;
 
 namespace YouJin.Scripts;
 
@@ -18,6 +19,13 @@ public class Entry
         var assembly = Assembly.GetExecutingAssembly();
         STS2RitsuLib.RitsuLibFramework.EnsureGodotScriptsRegistered(assembly, Logger);
         ModTypeDiscoveryHub.RegisterModAssembly(ModId, assembly);
+
+#if DEBUG107
+        Logger.Info(
+            "★ 本构建针对游戏 0.107.1（配置 Debug107）。已知差异："
+            + "0.107 没有 BeforeCombatRewardOffered 钩子，所以「贪婪模式·补刀分赃」暂不生效；"
+            + "共享血量/金币/能量、事件、遗物等其余玩法照常工作。");
+#endif
 
         // 事件「建筑师的背叛」的登记交给 RitsuLib 的自动发现
         // （ModTypeDiscoveryHub 会扫描所有 Mod*Template 子类，包括它）。
@@ -58,6 +66,12 @@ public class Entry
         // 新玩法：多人局里所有玩家共用一条血池、一个钱包。
         SharedVitalsPatches.Apply();
         SharedEnergyPatches.Apply();
+
+        // 新玩法：任务模式（每人每层 3 个任务，关底随 Boss 奖励结算）。
+        // 阶段 1 只做生成 + 显示；进度钩子与奖励挂载在后续阶段接。
+        QuestService.Init();
+        QuestLifecycle.Init();
+        QuestUi.Init();
 
         // 修佩尔之眼被 Watcher mod 的闸门挡住导致"每回合都送额外回合"的问题。
         PaelsEyeFixPatches.Apply();
