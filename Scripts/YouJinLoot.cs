@@ -59,6 +59,12 @@ internal static class LootLedger
     /// <summary>是否成功识别过击杀者（识别不出来时结算侧会走兜底逻辑，避免战利品凭空消失）。</summary>
     public static bool HasKiller;
 
+    /// <summary>
+    /// 「每只怪算谁打死的」——和 LastKiller 用的是同一套判定（ResolveKiller），
+    /// 但按生物分别存，给别处（例如任务模式的击杀任务）复用。
+    /// </summary>
+    public static readonly Dictionary<Creature, Player?> KillerOf = new();
+
     /// <summary>换了一场战斗就把上一场的数据清空。</summary>
     public static void BeginCombat(object? combatKey)
     {
@@ -69,6 +75,7 @@ internal static class LootLedger
         LastDamageDealer.Clear();
         PoisonApplied.Clear();
         DoomApplied.Clear();
+        KillerOf.Clear();
         LastKiller = null;
         HasKiller = false;
     }
@@ -180,6 +187,7 @@ public class CombatLootTracker : HookedSingletonModel
         LootLedger.BeginCombat(creature.CombatState);
 
         var (killer, reason) = ResolveKiller(creature);
+        LootLedger.KillerOf[creature] = killer;
         if (killer is null)
             return Task.CompletedTask;
 
@@ -234,6 +242,7 @@ public class CombatLootTracker : HookedSingletonModel
 
             var killer = BestApplier(LootLedger.DoomApplied, creature)
                          ?? OwnerPlayerOf(creature.Powers.OfType<DoomPower>().FirstOrDefault()?.Applier);
+            LootLedger.KillerOf[creature] = killer;
             if (killer is null)
                 continue;
 

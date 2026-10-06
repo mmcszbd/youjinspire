@@ -30,6 +30,7 @@ public static class QuestService
     public const int QuestsPerAct = 3;
 
     private static readonly object Sync = new();
+    private static readonly HashSet<QuestGoal> SeenGoals = new();
     private static PlayerRunSavedData<PlayerQuestBook>? _books;
     private static bool _registered;
 
@@ -131,7 +132,11 @@ public static class QuestService
                 if (book is null)
                     continue;
 
-                if (book.ActIndex == actIndex && book.Quests.Count == QuestsPerAct)
+                // 已经生成过就跳过；但如果存档里留着已经删掉的任务定义（id 找不到），
+                // 说明是老版本的任务池，重新生成一份。
+                if (book.ActIndex == actIndex
+                    && book.Quests.Count == QuestsPerAct
+                    && book.Quests.All(q => QuestPools.Find(q.DefId) is not null))
                     continue;
 
                 Generate(player, book, actIndex);
@@ -213,6 +218,17 @@ public static class QuestService
 
         try
         {
+            // 每个统计口径第一次真正收到事件时打一行日志，方便确认钩子生效。
+            lock (SeenGoals)
+            {
+                if (SeenGoals.Add(goal))
+                {
+                    Entry.Logger.Info(
+                        $"任务模式：首次收到进度事件 goal={goal} amount={amount}"
+                        + $"（NetId={player.NetId}）—— 钩子已生效");
+                }
+            }
+
             var book = GetBook(player);
             if (book is null)
                 return finished;

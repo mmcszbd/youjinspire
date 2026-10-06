@@ -45,14 +45,11 @@ public enum QuestGoal
     /// <summary>获得格挡。</summary>
     GainBlock,
 
-    /// <summary>获得金币。</summary>
-    GainGold,
+    /// <summary>在火堆选择「休息」。</summary>
+    RestAtCampfire,
 
-    /// <summary>使用药水。</summary>
-    UsePotions,
-
-    /// <summary>回复生命。</summary>
-    HealHp,
+    /// <summary>在火堆选择「锻造」（升级卡牌）。</summary>
+    SmithCard,
 
     /// <summary>消耗牌。</summary>
     ExhaustCards,
@@ -276,27 +273,19 @@ public static class QuestPools
         },
         new()
         {
-            Id = "gen_gain_gold", Goal = QuestGoal.GainGold, Pool = QuestPoolKind.General,
-            TitleZh = "敛财", TitleEn = "Accumulate",
-            DescZh = "获得 {0} 金币。", DescEn = "Gain {0} gold.",
-            BaseTarget = 150, PerActGrowth = 100,
-            Reward = QuestRewardKind.MaxHp, RewardBase = 5, RewardPerAct = 2,
+            Id = "gen_rest", Goal = QuestGoal.RestAtCampfire, Pool = QuestPoolKind.General,
+            TitleZh = "养精蓄锐", TitleEn = "Well Rested",
+            DescZh = "在火堆休息 {0} 次。", DescEn = "Rest at a campfire {0} times.",
+            BaseTarget = 2, PerActGrowth = 1,
+            Reward = QuestRewardKind.Gold, RewardBase = 120, RewardPerAct = 50,
         },
         new()
         {
-            Id = "gen_use_potions", Goal = QuestGoal.UsePotions, Pool = QuestPoolKind.General,
-            TitleZh = "药师", TitleEn = "Alchemist",
-            DescZh = "使用 {0} 瓶药水。", DescEn = "Use {0} potions.",
-            BaseTarget = 3, PerActGrowth = 1,
-            Reward = QuestRewardKind.Gold, RewardBase = 150, RewardPerAct = 60,
-        },
-        new()
-        {
-            Id = "gen_heal_hp", Goal = QuestGoal.HealHp, Pool = QuestPoolKind.General,
-            TitleZh = "休养生息", TitleEn = "Recuperate",
-            DescZh = "回复 {0} 点生命。", DescEn = "Heal {0} HP.",
-            BaseTarget = 40, PerActGrowth = 25,
-            Reward = QuestRewardKind.Gold, RewardBase = 100, RewardPerAct = 50,
+            Id = "gen_smith", Goal = QuestGoal.SmithCard, Pool = QuestPoolKind.General,
+            TitleZh = "千锤百炼", TitleEn = "Tempered",
+            DescZh = "在火堆锻造（升级卡牌）{0} 次。", DescEn = "Smith at a campfire {0} times.",
+            BaseTarget = 2, PerActGrowth = 1,
+            Reward = QuestRewardKind.MaxHp, RewardBase = 6, RewardPerAct = 2,
         },
         new()
         {
@@ -427,11 +416,11 @@ public static class QuestPools
         },
         new()
         {
-            Id = "nb_heal", Goal = QuestGoal.HealHp, Pool = QuestPoolKind.Character,
+            Id = "nb_exhaust", Goal = QuestGoal.ExhaustCards, Pool = QuestPoolKind.Character,
             CharacterStem = "NECROBINDER",
-            TitleZh = "汲取生机", TitleEn = "Siphon Life",
-            DescZh = "回复 {0} 点生命。", DescEn = "Heal {0} HP.",
-            BaseTarget = 45, PerActGrowth = 25,
+            TitleZh = "献祭", TitleEn = "Sacrifice",
+            DescZh = "消耗 {0} 张牌。", DescEn = "Exhaust {0} cards.",
+            BaseTarget = 8, PerActGrowth = 4,
             Reward = QuestRewardKind.Gold, RewardBase = 110, RewardPerAct = 50,
         },
 
@@ -456,12 +445,12 @@ public static class QuestPools
         },
         new()
         {
-            Id = "rg_gold", Goal = QuestGoal.GainGold, Pool = QuestPoolKind.Character,
+            Id = "rg_powers", Goal = QuestGoal.PlayPowers, Pool = QuestPoolKind.Character,
             CharacterStem = "REGENT",
-            TitleZh = "国库充盈", TitleEn = "Full Coffers",
-            DescZh = "获得 {0} 金币。", DescEn = "Gain {0} gold.",
-            BaseTarget = 150, PerActGrowth = 100,
-            Reward = QuestRewardKind.MaxHp, RewardBase = 5, RewardPerAct = 2,
+            TitleZh = "王权", TitleEn = "Royal Decree",
+            DescZh = "打出 {0} 张能力牌。", DescEn = "Play {0} Power cards.",
+            BaseTarget = 4, PerActGrowth = 2,
+            Reward = QuestRewardKind.MaxHp, RewardBase = 6, RewardPerAct = 2,
         },
 
         // ---- 观者（独立 mod 角色）----
