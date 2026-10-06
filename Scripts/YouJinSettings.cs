@@ -38,6 +38,7 @@ using Godot;
 using MegaCrit.Sts2.Core.Localization;
 using STS2RitsuLib.Settings;
 using STS2RitsuLib.Utils.Persistence;
+using YouJin.Scripts.Quest;
 
 namespace YouJin.Scripts;
 
@@ -110,6 +111,7 @@ public static class YouJinSettings
         {
             _mode = value;
             Save();
+            QuestUi.Refresh("mode");
         }
     }
 
@@ -194,6 +196,7 @@ public static class YouJinSettings
         {
             _questPanelEnabled = value;
             Save();
+            QuestUi.Refresh("panel-toggle");
         }
     }
 
