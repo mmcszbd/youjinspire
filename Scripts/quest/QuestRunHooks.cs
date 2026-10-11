@@ -17,6 +17,7 @@ using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Rewards;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
 using STS2RitsuLib;
@@ -73,6 +74,16 @@ public class QuestRunHooks : HookedSingletonModel
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// 战斗胜利。**本层 Boss 打完就把已完成的任务奖励直接发到手上**（不走奖励界面）。
+    /// 每层都是这个流程；重复触发会被 RewardGranted + AttachedKeys 挡掉。
+    /// </summary>
+    public override async Task AfterCombatVictory(CombatRoom room)
+    {
+        if (Active)
+            await QuestRewards.GrantDirectlyAsync(room);
+    }
+
     /// <summary>敌人死亡：算击杀（精英战里额外算一次精英击杀）。</summary>
     public override Task AfterDeath(
         PlayerChoiceContext choiceContext,
@@ -81,6 +92,11 @@ public class QuestRunHooks : HookedSingletonModel
         float deathAnimLength)
     {
         if (!Active)
+            return Task.CompletedTask;
+
+        // 「建筑师的挑拨」是 PvP 收尾战：那里杀掉的"敌人"其实是队友，
+        // 不该算进任务击杀（木桩也不能算）。
+        if (ArchitectBetrayalEvent.BetrayalCombatActive)
             return Task.CompletedTask;
 
         if (!creature.IsEnemy)
@@ -143,10 +159,41 @@ public static class QuestLifecycle
             RitsuLibFramework.SubscribeLifecycle<RunLoadedEvent>(
                 e => QuestService.EnsureGeneratedForAct(e.RunState),
                 true);
+
+            // 联机提醒：模式是本机设置（各存各的 user://youjin_settings.json），不会同步。
+            RitsuLibFramework.SubscribeLifecycle<RunStartedEvent>(
+                e => WarnIfMultiplayer(e.RunState),
+                true);
+            RitsuLibFramework.SubscribeLifecycle<RunLoadedEvent>(
+                e => WarnIfMultiplayer(e.RunState),
+                true);
         }
         catch (System.Exception ex)
         {
             Entry.Logger.Info($"任务模式：注册读档兜底钩子失败 {ex}");
+        }
+    }
+
+    /// <summary>
+    /// 多人局里提醒一句：两端要选同一个模式。
+    /// 模式不一致 → 一边生成任务一边不生成 → 两端的任务/奖励对不上 → 校验和分叉。
+    /// </summary>
+    private static void WarnIfMultiplayer(RunState? run)
+    {
+        try
+        {
+            if (run is null || run.Players.Count <= 1)
+                return;
+
+            Entry.Logger.Info(QuestService.Enabled
+                ? "任务模式：多人局 —— 确认所有玩家都把模式选成「任务模式」"
+                  + "（模式是本机设置、不会同步，不一致会分叉）"
+                : "任务模式：多人局，但本机模式不是「任务模式」——"
+                  + "如果队友开了任务模式，两端会不一致");
+        }
+        catch (System.Exception ex)
+        {
+            Entry.Logger.Info($"任务模式：多人提示失败 {ex}");
         }
     }
 }

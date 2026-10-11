@@ -147,6 +147,13 @@ public sealed class ArchitectBetrayalEvent : ModEventTemplate
     /// <summary>永远不参与随机事件抽取 —— 我们只在胜利房间手动用它。</summary>
     public override bool IsAllowed(IRunState runState) => false;
 
+    /// <summary>
+    /// 「现在这场战斗是不是建筑师的挑拨」——按**遭遇类型**判定，不依赖全局开关。
+    /// 比静态 bool 稳：不会因为上一场没清干净、或时序边界而误判。
+    /// </summary>
+    public static bool IsBetrayalEncounter(MegaCrit.Sts2.Core.Combat.ICombatState? combat)
+        => combat?.Encounter is BetrayalEggEncounter;
+
     /// <summary>两个选项：战斗 / 不战斗。</summary>
     protected override IReadOnlyList<EventOption> GenerateInitialOptions()
     {
@@ -182,7 +189,8 @@ public sealed class ArchitectBetrayalEvent : ModEventTemplate
     /// </summary>
     private async Task ResolveAsync(bool myChoiceWantsFight)
     {
-        if (!YouJinSettings.GameplayEnabled)
+        // 「建筑师的挑拨」在友尽尖塔和任务模式下都要生效。
+        if (!YouJinSettings.ArchitectEventEnabled)
             return;
 
         var me = Owner;

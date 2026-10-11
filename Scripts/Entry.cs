@@ -70,6 +70,7 @@ public class Entry
         // 新玩法：任务模式（每人每层 3 个任务，关底随 Boss 奖励结算）。
         // 阶段 1 只做生成 + 显示；进度钩子与奖励挂载在后续阶段接。
         QuestService.Init();
+        QuestRewards.Init();
         QuestLifecycle.Init();
         QuestUi.Init();
 

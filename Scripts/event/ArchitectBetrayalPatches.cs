@@ -26,6 +26,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using HarmonyLib;
 using Godot;
@@ -67,9 +68,17 @@ internal static class ArchitectBetrayalPatches
         PatchOne(harmony, typeof(EggFarRightPatch), "虫子(卵)挪到最右边");
         PatchOne(harmony, typeof(TeammatePotionTargetingPatch), "药水放开队友目标");
         PatchOne(harmony, typeof(TeammateAoeTargetingPatch), "群体卡带上队友");
-        PatchOne(harmony, typeof(PvpEnemyListPatch), "出牌瞬间把队友算成敌人");
+        // ⛔ 不再安装 PvpEnemyListPatch（原来那张"出牌窗口把队友塞进真实 CombatState.Enemies"的补丁）。
+        //    它会污染真实敌人列表：所有读 Enemies 的第三方代码都会看到"伪装成敌人的玩家"，
+        //    薄荷尖塔的「预计受伤」就是这么空引用崩的 → 崩在血条刷新链 → 出牌收尾断掉 → 校验和分叉被踢。
+        //    现在改用 BetrayalCombatView（仿 SpirePvp 的队伍视图）：真实列表保持干净，
+        //    只给"有主单位"换一个按队伍看的 CombatState。类先留着，万一要回退，把下面这行放开即可。
+        // PatchOne(harmony, typeof(PvpEnemyListPatch), "出牌瞬间把队友算成敌人");
         PatchOne(harmony, typeof(TeammateStunEndsTurnPatch), "眩晕玩家改成结束回合");
         PatchOne(harmony, typeof(EventSeenGuardPatch), "存档保护：非事件不写进已发现事件");
+        PatchOne(harmony, typeof(DiscoveredEventReadGuardPatch), "存档保护：读档时清掉脏的已发现事件");
+        PatchOne(harmony, typeof(ProgressSaveFileRepairPatch), "存档保护：读档前修进度存档文件");
+        PatchOne(harmony, typeof(BeatingRemnantBetrayalPatch), "律动残余：这场战斗失血上限改成 100");
     }
 
     private static void PatchOne(Harmony harmony, Type type, string label)
@@ -111,7 +120,8 @@ internal static class ArchitectRoomReplacementPatch
             if (__0 is not TheArchitect)
                 return;
 
-            if (!YouJinSettings.GameplayEnabled)
+            // 「建筑师的挑拨」在友尽尖塔和任务模式下都要生效。
+            if (!YouJinSettings.ArchitectEventEnabled)
                 return;
 
             var type = typeof(ArchitectBetrayalEvent);
@@ -869,9 +879,17 @@ internal static class TeammateStunEndsTurnPatch
 ///       InvalidCastException: Unable to cast 'BetrayalEggEncounter' to 'EventModel'
 ///   异常发生在 NGame.GameStartup() → 游戏直接起不来。
 ///
-/// 修法：在写入口上挡一道 —— 只有当这个 id 真的能解析成 `EventModel` 时才放行。
-///   这样"RoomType 写成 Event 的遭遇"再也不会污染存档，事件战斗本身也不受影响 ✓。
-///   （原版事件都是 EventModel，所以对原版内容零影响。）
+/// 修法分**读、写两道**（⚠ 只堵写是不够的 —— 实测踩过）：
+///   · 写侧（本补丁）：MarkEventAsSeen 只放行真事件；
+///   · 读侧（DiscoveredEventReadGuardPatch）：FromSerializable 解析 discovered_events 之前，
+///     先把"不是事件"的脏条目剔掉 —— 这样**已经被旧版本写脏的存档**也能自己恢复，
+///     否则那种存档每次启动都会在 NGame.GameStartup() 崩掉。
+///
+/// ⚠⚠ 探针千万别写 `ModelDb.GetByIdOrNull&lt;EventModel&gt;(id)`：
+///   它的实现是 `_contentById.TryGetValue(id, out var m); return (T)m;` ——
+///   "id 存在但不是这个类型"时**直接抛 InvalidCastException**，不是返回 null。
+///   （原来的写侧保护就是因为这个，一探就抛 → catch 里"按原版放行" → 保护静默失效。）
+///   正确写法：先取 `AbstractModel`（任何模型都能转成功），再用 `is EventModel` 判断。
 /// </summary>
 [HarmonyPatch(typeof(ProgressState), nameof(ProgressState.MarkEventAsSeen))]
 internal static class EventSeenGuardPatch
@@ -883,7 +901,7 @@ internal static class EventSeenGuardPatch
     {
         try
         {
-            if (ModelDb.GetByIdOrNull<EventModel>(__0) is not null)
+            if (IsRealEvent(__0))
                 return true; // 真的是事件 —— 走原版
 
             __result = false;
@@ -899,5 +917,177 @@ internal static class EventSeenGuardPatch
             Entry.Logger.Info($"存档保护：判定失败（按原版放行）{ex}");
             return true;
         }
+    }
+
+    /// <summary>
+    /// 不抛异常的判定：这个 id 解析出来是不是一个真正的事件模型。
+    /// （先取 AbstractModel —— 它是所有模型的基类，转换不会失败；再去比对类型。）
+    /// </summary>
+    internal static bool IsRealEvent(ModelId id)
+        => ModelDb.GetByIdOrNull<AbstractModel>(id) is EventModel;
+}
+
+/// <summary>
+/// ⑭ 存档保护（读侧）：读进度存档时，先把 `discovered_events` 里"不是事件"的脏条目剔掉。
+/// ----------------------------------------------------------------------------
+/// 崩溃链（队友日志实测）：
+///   NGame.GameStartup → SaveManager.InitProgressData → ProgressSaveManager.LoadProgress
+///     → ProgressState.FromSerializable → ParseDiscoveredSet&lt;EventModel&gt;
+///     → ModelDb.GetByIdOrNull&lt;EventModel&gt; → **InvalidCastException**
+///       "Unable to cast object of type 'YouJin.Scripts.BetrayalEggEncounter'
+///        to type 'MegaCrit.Sts2.Core.Models.EventModel'."
+///   → 游戏弹错误框、起不来。
+///
+/// 因为写侧保护曾经失效（见上），线上已经有存档被写进了
+/// `ENCOUNTER.YOUJIN_ENCOUNTER_BETRAYAL_EGG_ENCOUNTER`。这条脏数据在"读"的时候炸，
+/// 所以必须在读之前清掉：清完原方法就看不见它了，下次存档写回时也随之消失（自愈）。
+/// </summary>
+[HarmonyPatch(typeof(ProgressState), nameof(ProgressState.FromSerializable))]
+internal static class DiscoveredEventReadGuardPatch
+{
+    // FromSerializable(SerializableProgress save, DeserializationContext ctx) —— 静态方法，
+    // 参数用位置写法 __0（和上面同样的理由：不依赖参数名）。
+    private static bool _loggedOnce;
+
+    private static void Prefix(SerializableProgress __0)
+    {
+        try
+        {
+            var ids = __0?.DiscoveredEvents;
+            if (ids is null)
+                return;
+
+            if (!_loggedOnce)
+            {
+                _loggedOnce = true;
+                Entry.Logger.Info($"存档保护：FromSerializable 读档保护已生效（discovered_events 共 {ids.Count} 条）");
+            }
+
+            if (ids.Count == 0)
+                return;
+
+            var removed = ids.RemoveAll(id => !EventSeenGuardPatch.IsRealEvent(id));
+            if (removed > 0)
+            {
+                Entry.Logger.Info(
+                    $"存档保护：读档时清掉 {removed} 条「不是事件、却被写进 discovered_events」的脏数据"
+                    + "（否则 NGame.GameStartup 会因 InvalidCastException 起不来）");
+            }
+        }
+        catch (Exception ex)
+        {
+            // 兜底：清理失败也绝不能让读档流程挂掉。
+            Entry.Logger.Info($"存档保护：读档清理失败（按原版放行）{ex}");
+        }
+    }
+}
+
+/// <summary>
+/// ⑮ 存档保护（读档前修文件）—— 上面两道保护的兜底。
+/// ----------------------------------------------------------------------------
+/// 为什么还要这一道：队友更新到 0.6.2 之后，补丁⑭ 虽然显示"安装完成"，
+/// 但日志里没有"读档时清掉 N 条"那行、崩溃也依旧 —— 说明**内存里那道没赶上**
+/// （不是没跑到，就是那次解析走的不是这个对象）。
+/// 所以这里换个更靠前、也更硬的落点：`SaveManager.InitProgressData`（崩溃堆栈里
+/// LoadProgress 的上一帧，必然在所有解析之前执行），在游戏读文件**之前**，
+/// 把 `progress.save` 里 `discovered_events` 中"不是 EVENT.* 的条目"从原文里删掉。
+///
+/// 做法是**字符串手术**：只替换 `discovered_events` 那个数组的内容，
+/// 文件其余部分一个字节都不动（不整体重新序列化，避免动坏其它字段）。
+/// </summary>
+[HarmonyPatch(typeof(SaveManager), nameof(SaveManager.InitProgressData))]
+internal static class ProgressSaveFileRepairPatch
+{
+    private static void Prefix()
+    {
+        try
+        {
+            var saveManager = SaveManager.Instance;
+            if (saveManager is null)
+            {
+                Entry.Logger.Info("存档保护：读档前修复跳过（SaveManager.Instance 还没就绪）");
+                return;
+            }
+
+            // 和 ProgressSaveManager.LoadProgress 里算路径的方式完全一致
+            // （第二个参数传 null，它内部用的是 default(bool?)）。
+            var path = MegaCrit.Sts2.Core.Saves.Managers.ProgressSaveManager
+                .GetProgressPathForProfile(saveManager.CurrentProfileId, null);
+            if (string.IsNullOrEmpty(path))
+                return;
+
+            if (!Godot.FileAccess.FileExists(path))
+            {
+                Entry.Logger.Info($"存档保护：读档前修复跳过（没有进度存档：{path}）");
+                return;
+            }
+
+            var text = Godot.FileAccess.GetFileAsString(path);
+            var cleaned = RemoveNonEventEntries(text, out var removed);
+
+            if (removed <= 0 || cleaned is null)
+            {
+                Entry.Logger.Info($"存档保护：读档前检查过进度存档，discovered_events 干净（{path}）");
+                return;
+            }
+
+            using var file = Godot.FileAccess.Open(path, Godot.FileAccess.ModeFlags.Write);
+            if (file is null)
+            {
+                Entry.Logger.Info($"存档保护：发现 {removed} 条脏数据但文件打不开，无法修复（{path}）");
+                return;
+            }
+
+            file.StoreString(cleaned);
+            Entry.Logger.Info(
+                $"存档保护：读档前从进度存档里删掉 {removed} 条「不是事件」的 discovered_events 脏条目"
+                + $"（{path}）");
+        }
+        catch (Exception ex)
+        {
+            Entry.Logger.Info($"存档保护：读档前修复失败（按原版放行）{ex}");
+        }
+    }
+
+    /// <summary>
+    /// 只动 `"discovered_events": [ ... ]` 里的内容：保留以 `EVENT.` 开头的条目，
+    /// 其余（例如我们那个 `ENCOUNTER.YOUJIN_...`）删掉。返回 null = 不需要改。
+    /// </summary>
+    private static string? RemoveNonEventEntries(string text, out int removed)
+    {
+        removed = 0;
+
+        var key = text.IndexOf("\"discovered_events\"", StringComparison.Ordinal);
+        if (key < 0)
+            return null;
+
+        var open = text.IndexOf('[', key);
+        if (open < 0)
+            return null;
+
+        var close = text.IndexOf(']', open);
+        if (close < 0)
+            return null;
+
+        var body = text.Substring(open + 1, close - open - 1);
+        var matches = Regex.Matches(body, "\"([^\"]*)\"");
+        if (matches.Count == 0)
+            return null;
+
+        var kept = new List<string>();
+        foreach (Match match in matches)
+        {
+            var id = match.Groups[1].Value;
+            if (id.StartsWith("EVENT.", StringComparison.Ordinal))
+                kept.Add(id);
+            else
+                removed++;
+        }
+
+        if (removed == 0)
+            return null;
+
+        var rebuilt = string.Join(",", kept.Select(id => "\"" + id + "\""));
+        return text[..(open + 1)] + rebuilt + text[close..];
     }
 }

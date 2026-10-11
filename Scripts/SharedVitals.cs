@@ -611,7 +611,8 @@ public sealed class SharedVitalsCombatModel : HookedSingletonModel
             //   表现就是"能量加不到队友身上"）。
             // 这一行是只读诊断，不改任何行为。
             Entry.Logger.Info(
-                $"状态自检：模式={YouJinSettings.Mode}"
+                $"状态自检：贪婪={YouJinSettings.GreedyEnabled} 共享={YouJinSettings.SharedEnabled} "
+                + $"任务={YouJinSettings.QuestEnabled} 卧底={YouJinSettings.UndercoverPickMode}"
                 + $"｜本场生效 共享血量={SharedVitals.HpSharingActive}"
                 + $" 共享金币={SharedVitals.GoldSharingActive}"
                 + $" 共享能量={SharedEnergy.Active}"

@@ -33,6 +33,12 @@ public sealed class QuestProgress
     /// <summary>奖励是否已经发放（阶段 4 用）。</summary>
     public bool RewardGranted { get; set; }
 
+    /// <summary>是不是被卧底顶掉的（原主拿不到奖励，也永远不能完成）。</summary>
+    public bool Stolen { get; set; }
+
+    /// <summary>卧底账上的那条：偷的是谁（0 = 不是偷来的，是自己完成的）。</summary>
+    public ulong StolenFrom { get; set; }
+
     /// <summary>进度是否发生变化，返回 true 表示已完成（调用方用来触发提示）。</summary>
     public bool AddProgress(int amount)
     {

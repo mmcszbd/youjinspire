@@ -14,6 +14,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using MegaCrit.Sts2.Core.Entities.Players;
+using MegaCrit.Sts2.Core.Random;
 using MegaCrit.Sts2.Core.Runs;
 using STS2RitsuLib;
 using STS2RitsuLib.RunData;
@@ -69,8 +70,39 @@ public static class QuestService
         }
     }
 
-    /// <summary>任务模式是否生效。</summary>
-    public static bool Enabled => YouJinSettings.QuestModeEnabled;
+    /// <summary>任务系统是否生效（任务模式或卧底模式）。</summary>
+    public static bool Enabled => YouJinSettings.TaskSystemEnabled;
+
+    /// <summary>
+    /// **本层**的卧底是谁 —— 每层重新抽一次。
+    ///
+    /// 用局内种子 + "层数"当流名随机抽一名玩家：种子属于局内状态、
+    /// 玩家列表按 NetId 排序，所以各端算出来是同一个人。
+    /// 返回 0 = 本层没有卧底（单人局禁用卧底玩法，没有别人可偷）。
+    /// </summary>
+    public static ulong UndercoverNetId(RunState? run, int actIndex)
+    {
+        if (run is null || run.Players.Count <= 1)
+            return 0;
+
+        var ids = run.Players.Select(p => p.NetId).OrderBy(id => id).ToList();
+        var rng = new Rng(run.Rng.Seed, $"{Entry.ModId}/undercover/act{actIndex}");
+        return ids[rng.NextInt(ids.Count)];
+    }
+
+    /// <summary>这名玩家是不是**本层**的卧底。</summary>
+    public static bool IsUndercover(Player? player)
+    {
+        if (player is null || !YouJinSettings.UndercoverModeEnabled)
+            return false;
+
+        var run = player.RunState as RunState;
+        if (run is null)
+            return false;
+
+        var mole = UndercoverNetId(run, run.CurrentActIndex);
+        return mole != 0 && player.NetId == mole;
+    }
 
     /// <summary>取某个玩家的任务书（没有就建一份空的并写回）。</summary>
     public static PlayerQuestBook? GetBook(Player? player)
@@ -115,6 +147,20 @@ public static class QuestService
     }
 
     /// <summary>
+    /// 外部（例如发奖励时）直接改了任务书对象之后，调用这个把改动写回存档。
+    ///
+    /// ⚠ 必须把**改过的那一份对象**传进来。之前这里是自己 GetBook() 再存一次，
+    ///   结果标记（RewardGranted）没能生效、奖励被挂了两遍（线上实测）。
+    /// </summary>
+    public static void SaveBookFor(Player? player, PlayerQuestBook? book)
+    {
+        if (player is null || book is null)
+            return;
+
+        SaveBook(player, book);
+    }
+
+    /// <summary>
     /// 进入某一层时调用：确保这一局里每个玩家都有「本层 3 个任务」。
     /// 已经生成过就跳过（幂等 —— 读档、重连都安全）。
     /// </summary>
@@ -131,6 +177,23 @@ public static class QuestService
                 var book = GetBook(player);
                 if (book is null)
                     continue;
+
+                // 卧底没有自己的任务：把任务书清空并标记到本层，避免反复重算。
+                if (IsUndercover(player))
+                {
+                    // 只在**换层**的时候清空 —— 同一层里卧底偷到的任务会记在这里，
+                    // 不能因为"数量不为 0"就反复清掉。
+                    if (book.ActIndex != actIndex)
+                    {
+                        book.ActIndex = actIndex;
+                        book.Quests = new List<QuestProgress>();
+                        SaveBook(player, book);
+                        Entry.Logger.Info(
+                            $"卧底模式：第 {actIndex + 1} 层卧底 = NetId={player.NetId}（不生成自己的任务）");
+                    }
+
+                    continue;
+                }
 
                 // 已经生成过就跳过；但如果存档里留着已经删掉的任务定义（id 找不到），
                 // 说明是老版本的任务池，重新生成一份。
@@ -154,37 +217,33 @@ public static class QuestService
     /// <summary>为某个玩家生成某一层的 3 个任务。</summary>
     private static void Generate(Player player, PlayerQuestBook book, int actIndex)
     {
-        var rng = RitsuLibFramework.GetModPlayerRng(player, Entry.ModId, $"quests/act{actIndex}");
+        // 随机源：用「玩家自己的 RNG 种子 + 固定流名」现场造一个流。
+        //   · 种子来自 player.PlayerRng.Seed —— 属于局内状态，各端（含读档）完全一致；
+        //   · 流名只跟层数有关 —— 同一个玩家同一层，算多少次都是同一组任务。
+        // 不用 RitsuLib 的 GetModPlayerRng：那是**有状态、会往前走**的流，
+        // 万一某端因为时序重算一次，抽出来的东西就偏了，联机会分叉。
+        var rng = new Rng(player.PlayerRng.Seed, $"{Entry.ModId}/quests/act{actIndex}");
 
         var characterPool = QuestPools.ForCharacter(player);
         var generalPool = QuestPools.General.ToList();
 
         var picked = new List<QuestDef>();
 
-        // 设计：每层至少给 1 个角色专属任务（如果这个角色有专属池）。
-        if (characterPool.Count > 0)
+        // 结构固定：2 个通用任务 + 1 个角色专属任务。
+        // 难度是随机的：每个位置先滚一档难度，再从对应池子里挑同难度的。
+        for (var slot = 0; slot < QuestsPerAct; slot++)
         {
-            var candidates = characterPool.ToList();
-            rng.Shuffle(candidates);
-            picked.Add(candidates[0]);
+            var isCharacterSlot = slot == QuestsPerAct - 1 && characterPool.Count > 0;
+            var pool = isCharacterSlot ? characterPool : generalPool;
+
+            var def = PickForRandomDifficulty(rng, pool, picked)
+                      ?? PickForRandomDifficulty(rng, generalPool, picked);
+
+            if (def is not null)
+                picked.Add(def);
         }
 
-        // 其余名额从通用池 + 角色池里随机补齐，保证 3 个互不相同。
-        var rest = generalPool
-            .Concat(characterPool)
-            .Where(d => picked.All(p => p.Id != d.Id))
-            .ToList();
-        rng.Shuffle(rest);
-
-        foreach (var def in rest)
-        {
-            if (picked.Count >= QuestsPerAct)
-                break;
-
-            picked.Add(def);
-        }
-
-        // 打乱展示顺序，让角色任务不一定排第一。
+        // 打乱展示顺序：抽的时候角色任务固定在最后一个位置，展示时不一定排最后。
         rng.Shuffle(picked);
 
         book.ActIndex = actIndex;
@@ -205,8 +264,26 @@ public static class QuestService
             + string.Join(" | ", book.Quests.Select(q =>
             {
                 var def = QuestPools.Find(q.DefId);
-                return $"{q.DefId}({def?.Title ?? "?"}) 0/{q.Target}";
+                return $"[{def?.DifficultyText ?? "?"}]{def?.Title ?? q.DefId} 0/{q.Target} {def?.RewardText(q.RewardAmount)}";
             })));
+    }
+
+    /// <summary>
+    /// 先随机滚一档难度，再从那档里挑一个还没抽过的；
+    /// 该难度没有可用的就退回"随便挑一个没抽过的"。
+    /// </summary>
+    private static QuestDef? PickForRandomDifficulty(Rng rng, List<QuestDef> pool, List<QuestDef> used)
+    {
+        var difficulty = (QuestDifficulty)rng.NextInt(3);
+
+        var candidates = pool
+            .Where(d => d.Difficulty == difficulty && used.All(u => u.Id != d.Id))
+            .ToList();
+
+        if (candidates.Count == 0)
+            candidates = pool.Where(d => used.All(u => u.Id != d.Id)).ToList();
+
+        return candidates.Count == 0 ? null : rng.NextItem(candidates);
     }
 
     /// <summary>给某个玩家推进某类任务的进度。返回本次完成的任务。</summary>
@@ -227,6 +304,13 @@ public static class QuestService
                         $"任务模式：首次收到进度事件 goal={goal} amount={amount}"
                         + $"（NetId={player.NetId}）—— 钩子已生效");
                 }
+            }
+
+            // 卧底：自己的行动不推进"自己的任务"，而是去顶掉别人的任务。
+            if (IsUndercover(player))
+            {
+                ReportMoleAction(player, goal, amount);
+                return finished;
             }
 
             var book = GetBook(player);
@@ -268,6 +352,83 @@ public static class QuestService
         }
 
         return finished;
+    }
+
+    /// <summary>
+    /// 卧底的一次行动：拿去顶掉**别人**的任务。
+    ///   · 卧底的行动会推进其他每个玩家身上同口径的任务进度（谁先完成算谁的）；
+    ///   · 一旦被卧底顶完成 → 原主那条标记 Stolen（永久失效、拿不到奖励），
+    ///     同时按**双倍**奖励记到卧底自己的账上（面板只显示已到手的那些）。
+    /// </summary>
+    private static void ReportMoleAction(Player mole, QuestGoal goal, int amount)
+    {
+        if (!YouJinSettings.UndercoverModeEnabled || mole.RunState is not RunState run)
+            return;
+
+        var moleBook = GetBook(mole);
+        if (moleBook is null)
+            return;
+
+        var stolenTitles = new List<string>();
+
+        foreach (var victim in run.Players)
+        {
+            if (victim.NetId == mole.NetId)
+                continue;
+
+            var victimBook = GetBook(victim);
+            if (victimBook is null)
+                continue;
+
+            var changed = false;
+
+            foreach (var quest in victimBook.Quests)
+            {
+                if (quest.Completed || quest.Stolen)
+                    continue;
+
+                var def = QuestPools.Find(quest.DefId);
+                if (def is null || def.Goal != goal)
+                    continue;
+
+                var completed = quest.AddProgress(amount);
+                changed = true;
+
+                if (!completed)
+                    continue;
+
+                // 顶掉了：原主这条永久失效。
+                quest.Stolen = true;
+
+                // 记到卧底账上，奖励翻倍。
+                moleBook.Quests.Add(new QuestProgress
+                {
+                    DefId = quest.DefId,
+                    ActIndex = victimBook.ActIndex,
+                    Target = quest.Target,
+                    RewardAmount = Math.Max(1, quest.RewardAmount) * 2,
+                    Progress = quest.Target,
+                    Completed = true,
+                    RewardGranted = false,
+                    StolenFrom = victim.NetId,
+                });
+
+                stolenTitles.Add($"{def.Title}（原主 NetId={victim.NetId}）");
+            }
+
+            if (changed)
+                SaveBook(victim, victimBook);
+        }
+
+        if (stolenTitles.Count == 0)
+            return;
+
+        SaveBook(mole, moleBook);
+        Changed?.Invoke();
+
+        Entry.Logger.Info(
+            $"卧底模式：NetId={mole.NetId} 顶掉了 {stolenTitles.Count} 条任务 → "
+            + string.Join("、", stolenTitles) + "（奖励翻倍）");
     }
 
     /// <summary>只推进"当前正在出牌的那个玩家"的进度（跨客户端一致，阶段 2 用）。</summary>

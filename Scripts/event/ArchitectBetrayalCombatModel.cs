@@ -262,6 +262,10 @@ public sealed class ArchitectBetrayalCombatModel : HookedSingletonModel
         _betrayalCombat = null;
         _betrayalCombatConfirmed = false;
         ArchitectBetrayalEvent.BetrayalCombatActive = false;
+
+        // 把有主单位的 CombatState 还原成真实状态。
+        BetrayalCombatView.Uninstall();
+
         Entry.Logger.Info($"建筑师的挑拨：清掉残留的战斗标记（{reason}）");
     }
 
@@ -321,6 +325,10 @@ public sealed class ArchitectBetrayalCombatModel : HookedSingletonModel
             //   （NRun.Instance.GlobalUi.RelicInventory.AnimateRelic），
             //   一旦那里抛异常就会把它一起跳过 —— 这就是黑屏的来源。
             EnsureReplayInitialState();
+
+            // 队伍视图：给"有主单位"装上按队伍看的 CombatState。
+            // ⚠ 放在 EnsureReplayInitialState() 之后 —— 那一句绝不能被会抛异常的步骤挡在前面。
+            BetrayalCombatView.Install(combat);
 
             // 玩家对决开始 —— 先把这场战斗的曲子放起来。
             StartPvpMusic();
@@ -426,7 +434,9 @@ public sealed class ArchitectBetrayalCombatModel : HookedSingletonModel
     {
         try
         {
-            if (!ArchitectBetrayalEvent.BetrayalCombatActive)
+            // 全局开关 或「按遭遇类型判定」任一成立就算这场 —— 后者更稳（不靠状态清理时序）。
+            if (!ArchitectBetrayalEvent.BetrayalCombatActive
+                && !ArchitectBetrayalEvent.IsBetrayalEncounter(creature.CombatState))
                 return;
 
             // 只关心玩家死亡（木桩自己被打死不算）。
@@ -488,7 +498,9 @@ public sealed class ArchitectBetrayalCombatModel : HookedSingletonModel
     /// </summary>
     public override bool ShouldAllowHitting(Creature creature)
     {
-        if (!ArchitectBetrayalEvent.BetrayalCombatActive)
+        // 同上：全局开关 或 遭遇类型判定 任一成立。
+        if (!ArchitectBetrayalEvent.BetrayalCombatActive
+            && !ArchitectBetrayalEvent.IsBetrayalEncounter(creature?.CombatState))
             return true;
 
         if (creature is null || creature.Player is not null)

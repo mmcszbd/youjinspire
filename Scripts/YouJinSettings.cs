@@ -1,36 +1,22 @@
 // ============================================================================
 // 友尽尖塔（youjin）：设置项
 // ----------------------------------------------------------------------------
-// 把本 mod 的设置做成一页"友尽尖塔"，挂在游戏设置界面里
-// （和「东尼算法 AutoAnthony」那种独立设置页一样）。
+// 页面标题「派对模式」。玩法是**可叠加的开关**，不再是互斥的单选：
+//   · 贪婪模式 —— 原来「友尽尖塔」那一套：补尾刀拿金币/遗物、火堆「假寐」「酣睡」、
+//                三个事件、关底的「建筑师的挑拨」。子开关：补尾刀拿金币。
+//   · 共享模式 —— 多人共用一条血池 + 一个钱包 + 一管能量。子开关三个。
+//   · 任务模式 —— 每人每层 3 个任务，打完本层 Boss 结算。子开关：
+//                谁是卧底（关闭 / 每层随机抽一名玩家）+ 显示任务面板。
 //
-// 用的是 RitsuLib 自带的设置框架（STS2RitsuLib.Settings，日志里那串
-// [RitsuLib-ModSettings] 就是它）：
-//     new ModSettingsPageBuilder(modId, pageId).WithTitle(...).AddSection(...).Build()
-//     ModSettingsRegistry.Register(page)
-//     ModSettingsRegistry.RegisterModDisplayName(modId, text)
-// 每个开关的值用一个 binding 接进来：
-//     ModSettingsBindings.Callback(modId, dataKey, 读, 写, 存, SaveScope.Global)
-// 文本用 ModSettingsText.Dynamic(...)，这样不用再为设置界面单独做本地化文件。
+// 「贪婪模式 + 任务模式」可以同时开（就是所谓的派对模式组合）。
+// 旧版本（只有 mode 单选）的设置文件会自动迁移过来。
 //
-// 值本身由本文件自己持久化（user://youjin_settings.json），
-// 读不到就一律按"开启"处理，保证默认玩法不受影响。
-//
-// 玩法是**互斥的模式**（mode），不是一堆并列开关：
-//   · Off    —— 关闭：本 mod 一行都不介入；
-//   · YouJin —— 友尽尖塔：原来的玩法（抢战利品 / 火堆「假寐」「酣睡」/
-//               三个事件 / 「建筑师的背叛」）；
-//   · Shared —— 共享模式：多人共用一条血池 + 一个钱包。
-//               这个模式下**上面那些事件、火堆选项、战利品规则全都不触发**。
-//
-// 另外 mode 下面还挂着几个细开关：
-//   · greedy_loot_enabled —— 贪婪模式（只在 YouJin 模式里有意义）；
-//   · shared_hp_enabled / shared_gold_enabled / shared_energy_enabled —— 共享模式的子开关。
+// ★ 所有界面文字都在本文件里，用 Text("中文", "English") 包着；
+//   任务本身的文案在 Scripts/quest/QuestDefs.cs，游戏内面板文案在 Scripts/quest/QuestUi.cs。
 //
 // ⚠ 联机注意：这些开关是**本机设置**（各人存各人的 user://youjin_settings.json），
-//   不像 together 那样由主机下发。两端开关不一致 → 两端算出来的血量/金币不一样 →
-//   校验和分叉。要开共享就**每个人都开**。
-
+//   不会由主机下发。两端不一致 → 算出来的血量/金币/任务不一样 → 校验和分叉。
+//   要开什么，**每个人都得开一样的**。
 // ============================================================================
 
 using System;
@@ -42,20 +28,14 @@ using YouJin.Scripts.Quest;
 
 namespace YouJin.Scripts;
 
-/// <summary>本 mod 的玩法模式（三选一）。</summary>
-public enum YouJinMode
+/// <summary>「谁是卧底」的抽取方式。</summary>
+public enum UndercoverPick
 {
-    /// <summary>关闭：本 mod 完全不介入对局。</summary>
+    /// <summary>关闭：没有卧底，所有人正常拿任务。</summary>
     Off = 0,
 
-    /// <summary>友尽尖塔：原来的玩法（战利品归击杀者、死亡分钱、火堆假寐/酣睡、三个事件、建筑师的背叛）。</summary>
-    YouJin = 1,
-
-    /// <summary>共享模式：多人共用一条血池和一个钱包；上面的玩法全部不触发。</summary>
-    Shared = 2,
-
-    /// <summary>任务模式：每人每层 3 个任务，完成度在打完本层 Boss 的奖励里结算。</summary>
-    Quest = 3,
+    /// <summary>每一层随机抽一名玩家当卧底（单人局自动等于关闭）。</summary>
+    RandomEachAct = 1,
 }
 
 /// <summary>本 mod 的设置项。</summary>
@@ -64,67 +44,83 @@ public static class YouJinSettings
     /// <summary>模组 id（和清单/日志里的 youjin 一致）。</summary>
     public const string ModId = "youjin";
 
-    /// <summary>设置页/分区标题。</summary>
-    public const string SectionTitle = "友尽尖塔";
+    /// <summary>设置页标题。</summary>
+    public const string SectionTitle = "派对模式";
 
-    /// <summary>玩法模式（三选一）。</summary>
-    public const string ModeKey = "mode";
+    // ---- 旧版本的键名（只用于读设置时迁移）----
 
-    /// <summary>旧版本的"总开关"键名 —— 只在读设置时用来做兼容迁移。</summary>
-    public const string GameplayKey = "gameplay_enabled";
+    /// <summary>旧版：互斥模式（0 关闭 / 1 友尽尖塔 / 2 共享 / 3 任务 / 4 卧底）。</summary>
+    public const string LegacyModeKey = "mode";
 
-    /// <summary>贪婪模式（补尾刀拿金币）开关。</summary>
+    /// <summary>更旧版本：总开关。</summary>
+    public const string LegacyGameplayKey = "gameplay_enabled";
+
+    // ---- 现在的键名 ----
+
+    /// <summary>贪婪模式总开关（原来「友尽尖塔」那一套玩法）。</summary>
+    public const string GreedyKey = "greedy_enabled";
+
+    /// <summary>贪婪模式子开关：本场战斗的金币+遗物奖励全归击杀者。</summary>
     public const string GreedyLootKey = "greedy_loot_enabled";
 
-    /// <summary>共享血量开关（多人局共用一个血池）。</summary>
+    /// <summary>共享模式总开关。</summary>
+    public const string SharedKey = "shared_enabled";
+
+    /// <summary>共享血量。</summary>
     public const string SharedHpKey = "shared_hp_enabled";
 
-    /// <summary>共享金币开关（多人局共用一个钱包）。</summary>
+    /// <summary>共享金币。</summary>
     public const string SharedGoldKey = "shared_gold_enabled";
 
-    /// <summary>共享能量开关（多人局共用一个能量池）。</summary>
+    /// <summary>共享能量。</summary>
     public const string SharedEnergyKey = "shared_energy_enabled";
 
-    /// <summary>任务模式：右上角任务面板开关。</summary>
+    /// <summary>任务模式总开关。</summary>
+    public const string QuestKey = "quest_enabled";
+
+    /// <summary>任务模式子开关：谁是卧底。</summary>
+    public const string UndercoverKey = "undercover_pick";
+
+    /// <summary>任务模式子开关：右上角任务面板。</summary>
     public const string QuestPanelKey = "quest_panel_enabled";
 
     private const string SettingsPageId = "settings";
     private const string SavePath = "user://youjin_settings.json";
 
     private static bool _loaded;
-    private static YouJinMode _mode = YouJinMode.YouJin;
+    private static bool _greedyEnabled = true;
     private static bool _greedyLootEnabled = true;
+    private static bool _sharedEnabled;
     private static bool _sharedHpEnabled = true;
     private static bool _sharedGoldEnabled = true;
     private static bool _sharedEnergyEnabled = true;
+    private static bool _questEnabled;
+    private static UndercoverPick _undercoverPick = UndercoverPick.Off;
     private static bool _questPanelEnabled = true;
 
-    /// <summary>玩法模式（读不到时按「友尽尖塔」处理）。</summary>
-    public static YouJinMode Mode
+    // ------------------------------------------------------------------
+    // 玩法开关
+    // ------------------------------------------------------------------
+
+    /// <summary>贪婪模式：原来「友尽尖塔」那一套玩法是否生效。</summary>
+    public static bool GreedyEnabled
     {
         get
         {
             EnsureLoaded();
-            return _mode;
+            return _greedyEnabled;
         }
         set
         {
-            _mode = value;
+            _greedyEnabled = value;
             Save();
-            QuestUi.Refresh("mode");
         }
     }
 
-    /// <summary>「友尽尖塔」原玩法是否生效（= 模式选了友尽尖塔）。</summary>
-    public static bool GameplayEnabled => Mode == YouJinMode.YouJin;
+    /// <summary>和旧名字保持兼容：= 贪婪模式是否生效。</summary>
+    public static bool GameplayEnabled => GreedyEnabled;
 
-    /// <summary>「共享模式」是否生效（= 模式选了共享模式）。</summary>
-    public static bool SharedModeEnabled => Mode == YouJinMode.Shared;
-
-    /// <summary>「任务模式」是否生效（= 模式选了任务模式）。</summary>
-    public static bool QuestModeEnabled => Mode == YouJinMode.Quest;
-
-    /// <summary>贪婪模式：本场战斗的金币+遗物奖励全归击杀者。</summary>
+    /// <summary>贪婪模式子开关：本场战斗的金币/遗物全归击杀者。</summary>
     public static bool GreedyLootEnabled
     {
         get
@@ -139,7 +135,25 @@ public static class YouJinSettings
         }
     }
 
-    /// <summary>共享血量：多人局所有玩家共用一个血池（见 SharedVitals.cs）。</summary>
+    /// <summary>共享模式是否生效。</summary>
+    public static bool SharedEnabled
+    {
+        get
+        {
+            EnsureLoaded();
+            return _sharedEnabled;
+        }
+        set
+        {
+            _sharedEnabled = value;
+            Save();
+        }
+    }
+
+    /// <summary>和旧名字保持兼容：= 共享模式是否生效。</summary>
+    public static bool SharedModeEnabled => SharedEnabled;
+
+    /// <summary>共享血量。</summary>
     public static bool SharedHpEnabled
     {
         get
@@ -154,7 +168,7 @@ public static class YouJinSettings
         }
     }
 
-    /// <summary>共享金币：多人局所有玩家共用一个钱包。</summary>
+    /// <summary>共享金币。</summary>
     public static bool SharedGoldEnabled
     {
         get
@@ -169,7 +183,7 @@ public static class YouJinSettings
         }
     }
 
-    /// <summary>共享能量：多人局所有玩家共用一个能量池（见 SharedEnergy.cs）。</summary>
+    /// <summary>共享能量。</summary>
     public static bool SharedEnergyEnabled
     {
         get
@@ -183,6 +197,48 @@ public static class YouJinSettings
             Save();
         }
     }
+
+    /// <summary>任务模式：每人每层 3 个任务。</summary>
+    public static bool QuestEnabled
+    {
+        get
+        {
+            EnsureLoaded();
+            return _questEnabled;
+        }
+        set
+        {
+            _questEnabled = value;
+            Save();
+            QuestUi.Refresh("quest-toggle");
+        }
+    }
+
+    /// <summary>和旧名字保持兼容：= 任务模式是否生效。</summary>
+    public static bool QuestModeEnabled => QuestEnabled;
+
+    /// <summary>任务系统（= 任务模式）是否生效。</summary>
+    public static bool TaskSystemEnabled => QuestEnabled;
+
+    /// <summary>「谁是卧底」的抽取方式。</summary>
+    public static UndercoverPick UndercoverPickMode
+    {
+        get
+        {
+            EnsureLoaded();
+            return _undercoverPick;
+        }
+        set
+        {
+            _undercoverPick = value;
+            Save();
+            QuestUi.Refresh("undercover-toggle");
+        }
+    }
+
+    /// <summary>卧底玩法是否生效（= 任务模式开着 且 谁是卧底选了"每层随机"）。</summary>
+    public static bool UndercoverModeEnabled =>
+        QuestEnabled && UndercoverPickMode == UndercoverPick.RandomEachAct;
 
     /// <summary>任务模式：是否在右上角显示任务面板。</summary>
     public static bool QuestPanelEnabled
@@ -200,79 +256,89 @@ public static class YouJinSettings
         }
     }
 
-    /// <summary>把「友尽尖塔」设置页注册进游戏的设置界面。</summary>
+    /// <summary>
+    /// 「建筑师的挑拨」事件是否生效：贪婪模式或任务模式开着就生效。
+    /// （共享模式/全关时保持原版建筑师。）
+    /// </summary>
+    public static bool ArchitectEventEnabled => GreedyEnabled || QuestEnabled;
+
+    // ------------------------------------------------------------------
+    // 设置页
+    // ------------------------------------------------------------------
+
+    /// <summary>把「派对模式」设置页注册进游戏的设置界面。</summary>
     public static void Register()
     {
         try
         {
             var page = new ModSettingsPageBuilder(ModId, SettingsPageId)
                 .WithTitle(Text("友尽尖塔", "YouJin Spire"))
-                .AddSection("mode", section => section
-                    .WithTitle(Text("玩法模式", "Game mode"))
-                    .AddEnumChoice(
-                        ModeKey,
-                        Text("模式", "Mode"),
+
+                // ---- 总开关 ----
+                .AddSection("modes", section => section
+                    .WithTitle(Text("玩法", "Gameplay"))
+                    .AddToggle(
+                        GreedyKey,
+                        Text("贪婪模式", "Greedy mode"),
                         ModSettingsBindings.Callback(
-                            ModId,
-                            ModeKey,
-                            () => Mode,
-                            value => Mode = value,
-                            Save,
-                            SaveScope.Global),
-                        ModeName,
+                            ModId, GreedyKey, () => GreedyEnabled, value => GreedyEnabled = value, Save, SaveScope.Global),
                         Text(
-                            "关闭：不介入。贪婪模式：补刀拿钱和遗物，关底有新宿之战。"
-                            + "共享模式：共用血量、金币、能量。任务模式：每人每层 3 个任务，关底结算。"
-                            + "联机时两端要选同一个。",
-                            "Off: stays out of the run. YouJin Spire: kill-loot + events. "
-                            + "Shared: one HP pool, wallet and energy pool. "
-                            + "Quest: everyone gets 3 tasks per act, paid out with the boss rewards. "
-                            + "Both players must pick the same mode."),
-                        ModSettingsChoicePresentation.Stepper))
-                .AddSection("youjin", section => section
-                    .WithTitle(Text("贪婪模式", "Greedy mode"))
-                    .WithVisibleWhen(() => Mode == YouJinMode.YouJin)
+                            "补尾刀抢金币和遗物、火堆「假寐」「酣睡」、三个专属事件。",
+                            "Kill-steal gold and relics, the Laziness/Deep Sleep campfire options, three custom events, "
+                            + "and the Architect's Provocation finale."),
+                        null)
+                    .AddToggle(
+                        SharedKey,
+                        Text("共享模式", "Shared mode"),
+                        ModSettingsBindings.Callback(
+                            ModId, SharedKey, () => SharedEnabled, value => SharedEnabled = value, Save, SaveScope.Global),
+                        Text(
+                            "全队共用一条血池、一个钱包、一管能量。",
+                            "One shared HP pool, wallet and energy pool for the whole team."),
+                        null)
+                    .AddToggle(
+                        QuestKey,
+                        Text("任务模式", "Quest mode"),
+                        ModSettingsBindings.Callback(
+                            ModId, QuestKey, () => QuestEnabled, value => QuestEnabled = value, Save, SaveScope.Global),
+                        Text(
+                            "每人每层 3 个任务（2 个通用 + 1 个角色专属），打完本层 Boss 结算奖励。",
+                            "Three tasks per player per act (2 general + 1 character-specific), paid out with the "
+                            + "Act boss rewards."),
+                        null))
+
+                // ---- 贪婪模式子选项 ----
+                .AddSection("greedy", section => section
+                    .WithTitle(Text("贪婪模式选项", "Greedy options"))
+                    .WithVisibleWhen(() => GreedyEnabled)
                     .AddToggle(
                         GreedyLootKey,
                         Text("补尾刀拿金币", "Last hit takes the gold"),
                         ModSettingsBindings.Callback(
-                            ModId,
-                            GreedyLootKey,
-                            () => GreedyLootEnabled,
-                            value => GreedyLootEnabled = value,
-                            Save,
-                            SaveScope.Global),
+                            ModId, GreedyLootKey, () => GreedyLootEnabled, value => GreedyLootEnabled = value, Save, SaveScope.Global),
                         Text(
                             "本场战斗的金币和遗物奖励全归击杀者。",
                             "All gold and relic rewards from a combat go to whoever got the kill."),
                         null))
+
+                // ---- 共享模式子选项 ----
                 .AddSection("shared", section => section
-                    .WithTitle(Text("共享模式", "Shared mode"))
-                    .WithVisibleWhen(() => Mode == YouJinMode.Shared)
+                    .WithTitle(Text("共享模式选项", "Shared options"))
+                    .WithVisibleWhen(() => SharedEnabled)
                     .AddToggle(
                         SharedHpKey,
                         Text("共享血量", "Shared HP"),
                         ModSettingsBindings.Callback(
-                            ModId,
-                            SharedHpKey,
-                            () => SharedHpEnabled,
-                            value => SharedHpEnabled = value,
-                            Save,
-                            SaveScope.Global),
+                            ModId, SharedHpKey, () => SharedHpEnabled, value => SharedHpEnabled = value, Save, SaveScope.Global),
                         Text(
-                            "全队共用一管血：是各角色上限之和。",
+                            "全队共用一管血：新开一局时等于各角色上限之和。",
                             "One shared HP pool; on a new run it is the sum of everyone's max HP."),
                         null)
                     .AddToggle(
                         SharedGoldKey,
                         Text("共享金币", "Shared gold"),
                         ModSettingsBindings.Callback(
-                            ModId,
-                            SharedGoldKey,
-                            () => SharedGoldEnabled,
-                            value => SharedGoldEnabled = value,
-                            Save,
-                            SaveScope.Global),
+                            ModId, SharedGoldKey, () => SharedGoldEnabled, value => SharedGoldEnabled = value, Save, SaveScope.Global),
                         Text(
                             "全队共用一个钱包；开局为各角色起始金币之和。",
                             "One shared wallet; on a new run it is the sum of everyone's gold."),
@@ -281,30 +347,33 @@ public static class YouJinSettings
                         SharedEnergyKey,
                         Text("共享能量", "Shared energy"),
                         ModSettingsBindings.Callback(
-                            ModId,
-                            SharedEnergyKey,
-                            () => SharedEnergyEnabled,
-                            value => SharedEnergyEnabled = value,
-                            Save,
-                            SaveScope.Global),
+                            ModId, SharedEnergyKey, () => SharedEnergyEnabled, value => SharedEnergyEnabled = value, Save, SaveScope.Global),
                         Text(
                             "全队共用一管能量；每回合补到各人上限之和。",
-                            "One shared energy pool; each turn it refills to the sum of everyone's "
-                            + "max energy (the counter shows e.g. 6/6)."),
+                            "One shared energy pool; each turn it refills to the sum of everyone's max energy."),
                         null))
+
+                // ---- 任务模式子选项 ----
                 .AddSection("quest", section => section
-                    .WithTitle(Text("任务模式", "Quest mode"))
-                    .WithVisibleWhen(() => Mode == YouJinMode.Quest)
+                    .WithTitle(Text("任务模式选项", "Quest options"))
+                    .WithVisibleWhen(() => QuestEnabled)
+                    .AddEnumChoice(
+                        UndercoverKey,
+                        Text("谁是卧底", "Who is the mole"),
+                        ModSettingsBindings.Callback(
+                            ModId, UndercoverKey, () => UndercoverPickMode, value => UndercoverPickMode = value, Save, SaveScope.Global),
+                        UndercoverName,
+                        Text(
+                            "每层随机抽一名玩家当卧底：他没有自己的任务，靠顶掉别人的任务拿双倍奖励。"
+                            + "单人局里没有别人，会自动等于「关闭」。",
+                            "Each act, one random player becomes the mole: no tasks of their own, they steal other "
+                            + "players' tasks for double rewards. In single player it's automatically Off."),
+                        ModSettingsChoicePresentation.Stepper)
                     .AddToggle(
                         QuestPanelKey,
                         Text("显示任务面板", "Show quest panel"),
                         ModSettingsBindings.Callback(
-                            ModId,
-                            QuestPanelKey,
-                            () => QuestPanelEnabled,
-                            value => QuestPanelEnabled = value,
-                            Save,
-                            SaveScope.Global),
+                            ModId, QuestPanelKey, () => QuestPanelEnabled, value => QuestPanelEnabled = value, Save, SaveScope.Global),
                         Text(
                             "在屏幕右上角显示本层的 3 个任务和进度。",
                             "Shows this act's three quests and their progress in the top-right corner."),
@@ -315,10 +384,8 @@ public static class YouJinSettings
             ModSettingsRegistry.Register(page);
 
             Entry.Logger.Info(
-                $"设置：已注册「友尽尖塔」设置页（模式={Mode}；"
-                + $"贪婪={GreedyLootEnabled} 共享血量={SharedHpEnabled} "
-                + $"共享金币={SharedGoldEnabled} 共享能量={SharedEnergyEnabled} "
-                + $"任务面板={QuestPanelEnabled}）");
+                $"设置：已注册「派对模式」设置页（贪婪={GreedyEnabled} 共享={SharedEnabled} "
+                + $"任务={QuestEnabled} 卧底={UndercoverPickMode} 任务面板={QuestPanelEnabled}）");
         }
         catch (Exception ex)
         {
@@ -330,13 +397,11 @@ public static class YouJinSettings
     private static ModSettingsText Text(string chinese, string english)
         => ModSettingsText.Dynamic(() => IsChinese ? chinese : english);
 
-    /// <summary>模式选择器上每一项的名字。</summary>
-    private static ModSettingsText ModeName(YouJinMode mode) => mode switch
+    /// <summary>「谁是卧底」选择器上每一项的名字。</summary>
+    private static ModSettingsText UndercoverName(UndercoverPick pick) => pick switch
     {
-        YouJinMode.Off => Text("关闭", "Off"),
-        YouJinMode.Shared => Text("共享模式", "Shared mode"),
-        YouJinMode.Quest => Text("任务模式", "Quest mode"),
-        _ => Text("贪婪模式", "Greedy mode"),
+        UndercoverPick.RandomEachAct => Text("每层随机一名玩家", "One random player each act"),
+        _ => Text("关闭", "Off"),
     };
 
     private static bool IsChinese
@@ -354,6 +419,10 @@ public static class YouJinSettings
             }
         }
     }
+
+    // ------------------------------------------------------------------
+    // 读写
+    // ------------------------------------------------------------------
 
     /// <summary>第一次真正读设置时再从磁盘加载一次。</summary>
     private static void EnsureLoaded()
@@ -375,11 +444,50 @@ public static class YouJinSettings
             if (Json.ParseString(text).AsGodotDictionary() is not { } dict)
                 return;
 
-            // 新模式优先；老设置文件里只有 gameplay_enabled，按它迁移。
-            if (dict.ContainsKey(ModeKey))
-                _mode = (YouJinMode)dict[ModeKey].AsInt32();
-            else if (dict.ContainsKey(GameplayKey))
-                _mode = dict[GameplayKey].AsBool() ? YouJinMode.YouJin : YouJinMode.Off;
+            // ① 老格式：只有一个互斥的 mode（0 关闭 / 1 友尽尖塔 / 2 共享 / 3 任务 / 4 卧底）。
+            if (dict.ContainsKey(LegacyModeKey))
+            {
+                switch (dict[LegacyModeKey].AsInt32())
+                {
+                    case 1:
+                        _greedyEnabled = true;
+                        break;
+                    case 2:
+                        _greedyEnabled = false;
+                        _sharedEnabled = true;
+                        break;
+                    case 3:
+                        _greedyEnabled = false;
+                        _questEnabled = true;
+                        break;
+                    case 4:
+                        _greedyEnabled = false;
+                        _questEnabled = true;
+                        _undercoverPick = UndercoverPick.RandomEachAct;
+                        break;
+                    default:
+                        _greedyEnabled = false;
+                        break;
+                }
+            }
+            // ② 更老格式：只有 gameplay_enabled
+            else if (dict.ContainsKey(LegacyGameplayKey))
+            {
+                _greedyEnabled = dict[LegacyGameplayKey].AsBool();
+            }
+
+            // ③ 新格式的键优先
+            if (dict.ContainsKey(GreedyKey))
+                _greedyEnabled = dict[GreedyKey].AsBool();
+
+            if (dict.ContainsKey(SharedKey))
+                _sharedEnabled = dict[SharedKey].AsBool();
+
+            if (dict.ContainsKey(QuestKey))
+                _questEnabled = dict[QuestKey].AsBool();
+
+            if (dict.ContainsKey(UndercoverKey))
+                _undercoverPick = (UndercoverPick)dict[UndercoverKey].AsInt32();
 
             if (dict.ContainsKey(GreedyLootKey))
                 _greedyLootEnabled = dict[GreedyLootKey].AsBool();
@@ -398,7 +506,7 @@ public static class YouJinSettings
         }
         catch (Exception ex)
         {
-            Entry.Logger.Info($"设置：读取失败，按默认（全开）处理 {ex}");
+            Entry.Logger.Info($"设置：读取失败，按默认处理 {ex}");
         }
     }
 
@@ -409,11 +517,14 @@ public static class YouJinSettings
         {
             var dict = new Godot.Collections.Dictionary
             {
-                { ModeKey, (int)_mode },
+                { GreedyKey, _greedyEnabled },
                 { GreedyLootKey, _greedyLootEnabled },
+                { SharedKey, _sharedEnabled },
                 { SharedHpKey, _sharedHpEnabled },
                 { SharedGoldKey, _sharedGoldEnabled },
                 { SharedEnergyKey, _sharedEnergyEnabled },
+                { QuestKey, _questEnabled },
+                { UndercoverKey, (int)_undercoverPick },
                 { QuestPanelKey, _questPanelEnabled },
             };
 

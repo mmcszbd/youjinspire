@@ -39,6 +39,7 @@ public static class QuestUi
     private static Label? _title;
     private static Label? _hint;
     private static Button? _toggle;
+    private static string _normalHintText = string.Empty;
     private static bool _collapsed;
     private static bool _initialized;
     private static bool _loggedDataPending;
@@ -100,12 +101,20 @@ public static class QuestUi
                 return;
             }
 
-            var visible = YouJinSettings.QuestModeEnabled && YouJinSettings.QuestPanelEnabled;
+            var visible = YouJinSettings.TaskSystemEnabled && YouJinSettings.QuestPanelEnabled;
             _layer.Visible = visible;
             if (!visible)
                 return;
 
             var player = QuestService.LocalPlayer();
+
+            // 卧底：不列任务，只说明身份和玩法。
+            if (QuestService.IsUndercover(player))
+            {
+                ShowUndercoverPanel(player);
+                return;
+            }
+
             var book = player is null ? null : QuestService.GetBook(player);
 
             // 数据还没就绪（读档/开局的时序窗口）：保留面板，显示"读取中…"。
@@ -126,6 +135,7 @@ public static class QuestUi
             // 有玩家、但这一层还没任务（例如打到一半才切成任务模式）：补生成一次。
             var run = RunManager.Instance?.DebugOnlyGetState();
             if (run is not null
+                && !QuestService.IsUndercover(player)
                 && (book.ActIndex != run.CurrentActIndex || book.Quests.Count != QuestService.QuestsPerAct))
             {
                 if (!_generating)
@@ -152,6 +162,9 @@ public static class QuestUi
             _title.Text = QuestText.IsChinese
                 ? $"任务模式 · 第 {book.ActIndex + 1} 层（{book.CompletedCount}/{book.Quests.Count}）"
                 : $"Quests · Act {book.ActIndex + 1} ({book.CompletedCount}/{book.Quests.Count})";
+
+            if (_hint is not null && GodotObject.IsInstanceValid(_hint))
+                _hint.Text = _normalHintText;
 
             foreach (var child in _rows.GetChildren())
                 child.QueueFree();
@@ -261,6 +274,8 @@ public static class QuestUi
         _hint.AddThemeColorOverride("font_color", new Color(0.65f, 0.68f, 0.75f));
         column.AddChild(_hint);
 
+        _normalHintText = _hint.Text;
+
         ApplyCollapsed();
         return panel;
     }
@@ -277,6 +292,67 @@ public static class QuestUi
             child.QueueFree();
 
         _rows.AddChild(PlaceholderRow());
+    }
+
+    /// <summary>
+    /// 卧底玩家看到的面板：没有自己的任务；**已经顶掉的**任务会列在这里
+    /// （没顶掉之前看不到别人的任务）。
+    /// </summary>
+    private static void ShowUndercoverPanel(Player? player)
+    {
+        if (_title is null || _rows is null)
+            return;
+
+        _loggedDataPending = false;
+
+        var book = QuestService.GetBook(player);
+        var stolen = book?.Quests ?? new List<QuestProgress>();
+
+        _title.Text = QuestText.IsChinese
+            ? $"卧底模式 · 你的身份：卧底（已顶掉 {stolen.Count} 条）"
+            : $"Undercover · you are the mole ({stolen.Count} stolen)";
+
+        if (_hint is not null && GodotObject.IsInstanceValid(_hint))
+        {
+            _hint.Text = QuestText.IsChinese
+                ? "你偷到的任务同样在打完本层 Boss 时发放（双倍）。"
+                : "Tasks you steal are paid out with the Act boss rewards, at double value.";
+        }
+
+        foreach (var child in _rows.GetChildren())
+            child.QueueFree();
+
+        // 已经顶掉的：列出来（紫色，带"从谁手里顶掉 / 奖励翻倍"）。
+        foreach (var quest in stolen)
+            _rows.AddChild(BuildRow(quest));
+
+        if (stolen.Count > 0)
+            return;
+
+        _rows.AddChild(InfoRow(
+            QuestText.IsChinese
+                ? "你没有自己的任务。"
+                : "You have no tasks of your own."));
+        _rows.AddChild(InfoRow(
+            QuestText.IsChinese
+                ? "去抢先完成别人的任务"
+                : "Complete someone else's task to take its reward at double value — "
+                  + "they lose it."));
+        _rows.AddChild(InfoRow(
+            QuestText.IsChinese
+                ? "不要让别人发现你是卧底"
+                : "You can't see their tasks until you finish one."));
+    }
+
+    private static Label InfoRow(string text)
+    {
+        var label = new Label
+        {
+            Text = text,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+        };
+        label.AddThemeColorOverride("font_color", new Color(0.85f, 0.8f, 0.72f));
+        return label;
     }
 
     private static Label PlaceholderRow()
@@ -297,14 +373,24 @@ public static class QuestUi
         var row = new VBoxContainer();
         row.AddThemeConstantOverride("separation", 1);
 
-        var mark = quest.Completed ? "✔" : "·";
+        // 三种状态：正常 / 被卧底顶掉（原主）/ 卧底偷来的。
+        var stolenByMole = quest.Stolen;
+        var stolenByMe = quest.StolenFrom != 0;
+        var mark = stolenByMole ? "✖" : quest.Completed ? "✔" : "·";
+
         var title = new Label
         {
-            Text = $"{mark} {def?.Title ?? quest.DefId}",
+            Text = def is null
+                ? $"{mark} {quest.DefId}"
+                : $"{mark} 【{def.DifficultyText}】{def.Title}",
         };
-        title.AddThemeColorOverride("font_color", quest.Completed
-            ? new Color(0.62f, 0.92f, 0.62f)
-            : new Color(0.95f, 0.87f, 0.6f));
+        title.AddThemeColorOverride("font_color", stolenByMole
+            ? new Color(0.9f, 0.45f, 0.45f)
+            : stolenByMe
+                ? new Color(0.85f, 0.65f, 0.98f)
+                : quest.Completed
+                    ? new Color(0.62f, 0.92f, 0.62f)
+                    : new Color(0.95f, 0.87f, 0.6f));
         row.AddChild(title);
 
         if (def is not null)
@@ -319,15 +405,28 @@ public static class QuestUi
         }
 
         var reward = def?.RewardText(quest.RewardAmount) ?? string.Empty;
+        var progressText = stolenByMole
+            ? (QuestText.IsChinese ? "奖励已被卧底抢走" : "Stolen by the mole — no reward")
+            : stolenByMe
+                ? (QuestText.IsChinese
+                    ? $"从 NetId={quest.StolenFrom} 手里顶掉 · 奖励翻倍：{reward}"
+                    : $"Stolen from NetId={quest.StolenFrom} · double reward: {reward}")
+                : QuestText.IsChinese
+                    ? $"进度 {quest.Progress}/{quest.Target}    奖励：{reward}"
+                    : $"Progress {quest.Progress}/{quest.Target}    Reward: {reward}";
+
         var progress = new Label
         {
-            Text = QuestText.IsChinese
-                ? $"进度 {quest.Progress}/{quest.Target}    奖励：{reward}"
-                : $"Progress {quest.Progress}/{quest.Target}    Reward: {reward}",
+            Text = progressText,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
         };
-        progress.AddThemeColorOverride("font_color", quest.Completed
-            ? new Color(0.62f, 0.92f, 0.62f)
-            : new Color(0.72f, 0.78f, 0.9f));
+        progress.AddThemeColorOverride("font_color", stolenByMole
+            ? new Color(0.85f, 0.5f, 0.5f)
+            : stolenByMe
+                ? new Color(0.85f, 0.65f, 0.98f)
+                : quest.Completed
+                    ? new Color(0.62f, 0.92f, 0.62f)
+                    : new Color(0.72f, 0.78f, 0.9f));
         row.AddChild(progress);
 
         var spacer = new Control { CustomMinimumSize = new Vector2(0, 6) };
