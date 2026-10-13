@@ -266,6 +266,9 @@ public sealed class ArchitectBetrayalCombatModel : HookedSingletonModel
         // 把有主单位的 CombatState 还原成真实状态。
         BetrayalCombatView.Uninstall();
 
+        // 顺带把「每回合出牌上限」的计数清掉。
+        ArchitectDuelRules.ResetAll();
+
         Entry.Logger.Info($"建筑师的挑拨：清掉残留的战斗标记（{reason}）");
     }
 
@@ -352,12 +355,36 @@ public sealed class ArchitectBetrayalCombatModel : HookedSingletonModel
                     if (playerCreature.Player is not { } owner || owner.Creature is not { } creature)
                         continue;
 
-                    var tripled = creature.MaxHp * 3;
-                    await CreatureCmd.SetMaxHp(creature, tripled);
-                    await CreatureCmd.SetCurrentHp(creature, tripled);
+                    // 倍数来自设置（1-5，默认 3）。
+                    var multiplier = YouJinSettings.ArchitectHpMultiplier;
+                    var boosted = creature.MaxHp * multiplier;
+                    await CreatureCmd.SetMaxHp(creature, boosted);
+                    await CreatureCmd.SetCurrentHp(creature, boosted);
 
                     Entry.Logger.Info(
-                        $"建筑师的背叛：NetId={owner.NetId} 回满血，生命上限 ×3 → {tripled}");
+                        $"建筑师的背叛：NetId={owner.NetId} 回满血，生命上限 ×{multiplier} → {boosted}");
+                }
+
+                // 【群体壁垒】开关：开战给所有玩家挂上「壁垒」（BarricadePower）。
+                if (YouJinSettings.ArchitectFortitudeEnabled)
+                {
+                    foreach (var player in combat.Players)
+                    {
+                        if (player.Creature is not { } target)
+                            continue;
+
+                        try
+                        {
+                            // ctx 传 null —— 和 SpirePvp 在开战时挂能力用的是同一个调用形状。
+                            await PowerCmd.Apply<BarricadePower>(null!, target, 1m, null!, null!, false);
+                        }
+                        catch (Exception ex)
+                        {
+                            Entry.Logger.Info($"建筑师的背叛：给 NetId={player.NetId} 上壁垒失败 {ex}");
+                        }
+                    }
+
+                    Entry.Logger.Info("建筑师的背叛：已给所有玩家挂上「壁垒」（群体壁垒开关）");
                 }
             }
 
@@ -473,6 +500,42 @@ public sealed class ArchitectBetrayalCombatModel : HookedSingletonModel
         StopPvpMusic();
         ClearBetrayalMarkers("战斗结束");
         _buffedCombat = null;
+        return Task.CompletedTask;
+    }
+
+    /// <summary>本回合这个玩家打出的牌数 +1（用于「每回合出牌上限」）。</summary>
+    public override Task AfterCardPlayed(
+        PlayerChoiceContext choiceContext,
+        MegaCrit.Sts2.Core.Entities.Cards.CardPlay play)
+    {
+        try
+        {
+            if (ArchitectBetrayalEvent.BetrayalCombatActive)
+                ArchitectDuelRules.OnCardPlayed(play.Player);
+        }
+        catch (Exception ex)
+        {
+            Entry.Logger.Info($"建筑师的挑拨：出牌计数失败 {ex}");
+        }
+
+        return Task.CompletedTask;
+    }
+
+    /// <summary>回合开始：清掉这个玩家本回合的出牌计数。</summary>
+    public override Task AfterPlayerTurnStart(
+        PlayerChoiceContext choiceContext,
+        MegaCrit.Sts2.Core.Entities.Players.Player player)
+    {
+        try
+        {
+            if (ArchitectBetrayalEvent.BetrayalCombatActive)
+                ArchitectDuelRules.ResetForPlayer(player);
+        }
+        catch (Exception ex)
+        {
+            Entry.Logger.Info($"建筑师的挑拨：出牌计数重置失败 {ex}");
+        }
+
         return Task.CompletedTask;
     }
 

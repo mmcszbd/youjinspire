@@ -79,6 +79,8 @@ internal static class ArchitectBetrayalPatches
         PatchOne(harmony, typeof(DiscoveredEventReadGuardPatch), "存档保护：读档时清掉脏的已发现事件");
         PatchOne(harmony, typeof(ProgressSaveFileRepairPatch), "存档保护：读档前修进度存档文件");
         PatchOne(harmony, typeof(BeatingRemnantBetrayalPatch), "律动残余：这场战斗失血上限改成 100");
+        PatchOne(harmony, typeof(ArchitectCardLimitPatch), "出牌上限：无参数 CanPlay");
+        PatchOne(harmony, typeof(ArchitectCardLimitReasonPatch), "出牌上限：带原因的 CanPlay（UI）");
     }
 
     private static void PatchOne(Harmony harmony, Type type, string label)
@@ -122,6 +124,14 @@ internal static class ArchitectRoomReplacementPatch
 
             // 「建筑师的挑拨」在友尽尖塔和任务模式下都要生效。
             if (!YouJinSettings.ArchitectEventEnabled)
+                return;
+
+            // ★ 只在多人局出现：这是一场"投票 → PvP"的收尾玩法，单人没有对手，
+            //   选「战斗」会开场即结束（只剩 1 人活着 → 清木桩 → 战斗结束）。
+            //   单人保持原版建筑师（和另外三个事件的口径一致：都要求 Players.Count > 1）。
+            //   ⚠ 控制台 `event YOUJIN_EVENT_ARCHITECT_BETRAYAL_EVENT` 仍然可以手动跳进来（调试用）。
+            var run = RunManager.Instance?.DebugOnlyGetState();
+            if (run is null || run.Players.Count <= 1)
                 return;
 
             var type = typeof(ArchitectBetrayalEvent);

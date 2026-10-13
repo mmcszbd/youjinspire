@@ -84,6 +84,15 @@ public static class YouJinSettings
     /// <summary>任务模式子开关：右上角任务面板。</summary>
     public const string QuestPanelKey = "quest_panel_enabled";
 
+    /// <summary>建筑师的挑拨：血量倍数（1-5，默认 3）。</summary>
+    public const string ArchitectHpKey = "architect_hp_multiplier";
+
+    /// <summary>建筑师的挑拨：开战给所有玩家挂「壁垒」。</summary>
+    public const string ArchitectFortitudeKey = "architect_fortitude";
+
+    /// <summary>建筑师的挑拨：每回合出牌上限（0 = 无上限）。</summary>
+    public const string ArchitectCardLimitKey = "architect_card_limit";
+
     private const string SettingsPageId = "settings";
     private const string SavePath = "user://youjin_settings.json";
 
@@ -97,6 +106,9 @@ public static class YouJinSettings
     private static bool _questEnabled;
     private static UndercoverPick _undercoverPick = UndercoverPick.Off;
     private static bool _questPanelEnabled = true;
+    private static int _architectHpMultiplier = 3;
+    private static bool _architectFortitude;
+    private static int _architectCardLimit;
 
     // ------------------------------------------------------------------
     // 玩法开关
@@ -262,6 +274,64 @@ public static class YouJinSettings
     /// </summary>
     public static bool ArchitectEventEnabled => GreedyEnabled || QuestEnabled;
 
+    /// <summary>建筑师的挑拨：这场 PvP 里生命上限的倍数（1-5，默认 3）。</summary>
+    public static int ArchitectHpMultiplier
+    {
+        get
+        {
+            EnsureLoaded();
+            return Math.Clamp(_architectHpMultiplier, 1, 5);
+        }
+        set
+        {
+            _architectHpMultiplier = Math.Clamp(value, 1, 5);
+            Save();
+        }
+    }
+
+    /// <summary>建筑师的挑拨：开战是否给所有玩家挂「壁垒」（默认关）。</summary>
+    public static bool ArchitectFortitudeEnabled
+    {
+        get
+        {
+            EnsureLoaded();
+            return _architectFortitude;
+        }
+        set
+        {
+            _architectFortitude = value;
+            Save();
+        }
+    }
+
+    /// <summary>
+    /// 建筑师的挑拨：每回合出牌上限（默认 0 = 无上限）。
+    /// 设置里滑杆是 0-30，0 表示无上限，其余按 10-30 用。
+    /// </summary>
+    public static int ArchitectCardPlayLimit
+    {
+        get
+        {
+            EnsureLoaded();
+            return Math.Clamp(_architectCardLimit, 0, 30);
+        }
+        set
+        {
+            _architectCardLimit = Math.Clamp(value, 0, 30);
+            Save();
+        }
+    }
+
+    /// <summary>真正生效的出牌上限（0 = 无限制；否则至少 10）。</summary>
+    public static int EffectiveCardPlayLimit
+    {
+        get
+        {
+            var value = ArchitectCardPlayLimit;
+            return value <= 0 ? 0 : Math.Max(10, value);
+        }
+    }
+
     // ------------------------------------------------------------------
     // 设置页
     // ------------------------------------------------------------------
@@ -378,6 +448,39 @@ public static class YouJinSettings
                             "在屏幕右上角显示本层的 3 个任务和进度。",
                             "Shows this act's three quests and their progress in the top-right corner."),
                         null))
+
+                // ---- 建筑师的挑拨 ----
+                .AddSection("architect", section => section
+                    .WithTitle(Text("建筑师的挑拨", "The Architect's Provocation"))
+                    .WithVisibleWhen(() => GreedyEnabled || QuestEnabled)
+                    .AddIntSlider(
+                        ArchitectHpKey,
+                        Text("血量倍数", "HP multiplier"),
+                        ModSettingsBindings.Callback(
+                            ModId, ArchitectHpKey, () => ArchitectHpMultiplier, v => ArchitectHpMultiplier = v, Save, SaveScope.Global),
+                        1, 5, 1,
+                        v => $"{v}×",
+                        Text(
+                            "这场 PvP 里所有人生命上限的倍数（默认 3 倍）。",
+                            "Multiplier applied to everyone's max HP in the PvP fight (default 3x)."))
+                    .AddToggle(
+                        ArchitectFortitudeKey,
+                        Text("群体壁垒", "Team-wide Barricade"),
+                        ModSettingsBindings.Callback(
+                            ModId, ArchitectFortitudeKey, () => ArchitectFortitudeEnabled, v => ArchitectFortitudeEnabled = v, Save, SaveScope.Global),
+                        Text(
+                            "开战给所有玩家挂上「壁垒」（格挡在回合结束时不清空）。默认关闭。",
+                            "Grants Barricade to every player when the fight starts (block is not cleared at end of turn). Off by default."))
+                    .AddIntSlider(
+                        ArchitectCardLimitKey,
+                        Text("每回合出牌上限", "Cards per turn limit"),
+                        ModSettingsBindings.Callback(
+                            ModId, ArchitectCardLimitKey, () => ArchitectCardPlayLimit, v => ArchitectCardPlayLimit = v, Save, SaveScope.Global),
+                        0, 30, 1,
+                        v => v <= 0 ? (IsChinese ? "无上限" : "Unlimited") : $"{Math.Max(10, v)}",
+                        Text(
+                            "每人每回合最多打出几张牌；选「无上限」=原版。范围 10-30。",
+                            "Max cards each player may play per turn; \"Unlimited\" = vanilla. Range 10-30.")))
                 .Build();
 
             ModSettingsRegistry.RegisterModDisplayName(ModId, Text("友尽尖塔", "YouJin Spire"));
@@ -503,6 +606,15 @@ public static class YouJinSettings
 
             if (dict.ContainsKey(QuestPanelKey))
                 _questPanelEnabled = dict[QuestPanelKey].AsBool();
+
+            if (dict.ContainsKey(ArchitectHpKey))
+                _architectHpMultiplier = Math.Clamp(dict[ArchitectHpKey].AsInt32(), 1, 5);
+
+            if (dict.ContainsKey(ArchitectFortitudeKey))
+                _architectFortitude = dict[ArchitectFortitudeKey].AsBool();
+
+            if (dict.ContainsKey(ArchitectCardLimitKey))
+                _architectCardLimit = Math.Clamp(dict[ArchitectCardLimitKey].AsInt32(), 0, 30);
         }
         catch (Exception ex)
         {
@@ -526,6 +638,9 @@ public static class YouJinSettings
                 { QuestKey, _questEnabled },
                 { UndercoverKey, (int)_undercoverPick },
                 { QuestPanelKey, _questPanelEnabled },
+                { ArchitectHpKey, _architectHpMultiplier },
+                { ArchitectFortitudeKey, _architectFortitude },
+                { ArchitectCardLimitKey, _architectCardLimit },
             };
 
             using var file = Godot.FileAccess.Open(SavePath, Godot.FileAccess.ModeFlags.Write);
