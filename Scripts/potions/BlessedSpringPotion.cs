@@ -18,7 +18,9 @@
 //       "Sequence contains no matching element"，药水弹窗 _Ready 直接崩，
 //       表现就是"点开药水后卡在使用/丢弃界面关不掉"。）
 //   · 药水可用时机：PotionUsage.AnyTime(2) 表示随时可用（原版 FruitsJuice / BloodPotion 就是这么写的）；
-//     TargetType 沿用原版惯例 AnyPlayer(5)（原版连"回自己血"的药水也是选一个玩家当目标）。
+//     TargetType 用 Self(1)：效果只作用于使用者自己，不该让你去点队友
+//     （2026-10-28 用户报「加了两个药水怎么都只能对自己用」——泉水本来就是对使用者自己生效，
+//       之前挂 AnyPlayer 会先弹选人、点了队友却还是删自己的诅咒，改成 Self 让界面和行为一致）。
 //   · 使用入口：PotionModel.OnUse(ctx, target)（protected virtual）—— 用掉药水的瞬间就会跑这里。
 //   · 删牌界面：CardSelectCmd.FromDeckForRemoval(player, prefs, filter)，第三个参数是自定义筛选，
 //     原版传 null（所有牌都能删），我们传"是诅咒且不带 Eternal"。
@@ -57,8 +59,13 @@ public sealed class BlessedSpringPotion : ModPotionTemplate
     /// <summary>随时可用（不限于战斗）。</summary>
     public override PotionUsage Usage => PotionUsage.AnyTime;
 
-    /// <summary>沿用原版惯例：所有药水都要选一个玩家当目标。</summary>
-    public override TargetType TargetType => TargetType.AnyPlayer;
+    /// <summary>
+    /// 只对自己：不弹选人界面。
+    /// 效果本来就是删"使用者自己"的诅咒（OnUse 里从来没看 target），
+    /// 之前挂 AnyPlayer 会在多人战斗里让你先点一个玩家、点了队友也没用 —— 纯误导。
+    /// （原版反面例子：BloodPotion / FruitJuice 那种 AnyPlayer 是真的对目标生效，我们不是。）
+    /// </summary>
+    public override TargetType TargetType => TargetType.Self;
 
     /// <summary>
     /// 图标：优先 youjin/images/potions/blessed_spring.png（+ _outline.png），
@@ -114,33 +121,19 @@ public sealed class BlessedSpringPotion : ModPotionTemplate
            && !card.Keywords.Contains(CardKeyword.Eternal);
 
     /// <summary>把名字/描述注入 potions 表（商店里显示名字要用，由 Entry 提前调一次）。</summary>
-    public static void EnsureLocalized()
+    /// <param name="force">true = 覆盖式（LocManager 表加载完之后由 LateLocalization 调，改文案不用重导 PCK）。</param>
+    public static void EnsureLocalized(bool force = false)
     {
-        try
-        {
-            var loc = LocManager.Instance;
-            var table = loc?.GetTable("potions");
-            if (loc is null || table is null)
-                return;
-
             var id = ModelDb.GetId(typeof(BlessedSpringPotion))?.Entry;
-            if (string.IsNullOrEmpty(id) || table.HasEntry($"{id}.title"))
+            if (string.IsNullOrEmpty(id))
                 return;
-
-            var chinese = (loc.Language ?? string.Empty).StartsWith("zh", StringComparison.OrdinalIgnoreCase);
-
-            table.MergeWith(new Dictionary<string, string>
-            {
-                [$"{id}.title"] = chinese ? "被祝福的泉水" : "Blessed Spring",
-                [$"{id}.description"] = chinese
-                    ? $"从[gold]卡组[/gold]中选择一张[red]诅咒[/red]删除（永恒诅咒无法删除）。"
-                      + $"售价 [blue]{Price}[/blue] 金币。"
-                    : "Remove a Curse from your deck (Eternal curses can't be removed).",
-            });
-        }
-        catch (Exception ex)
+        LocInject.Merge("potions", $"{id}.title", force, chinese => new Dictionary<string, string>
         {
-            Entry.Logger.Info($"被祝福的泉水：本地化注入失败 {ex}");
-        }
+            [$"{id}.title"] = chinese ? "被祝福的泉水" : "Blessed Spring",
+            [$"{id}.description"] = chinese
+                ? $"从[gold]卡组[/gold]中选择一张[red]诅咒[/red]删除（永恒诅咒无法删除）。"
+                  + $"售价 [blue]{Price}[/blue] 金币。"
+                : "Remove a Curse from your deck (Eternal curses can't be removed).",
+        }, "被祝福的泉水");
     }
 }

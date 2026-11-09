@@ -111,16 +111,6 @@ public enum QuestDifficulty
     Hard = 2,
 }
 
-/// <summary>任务属于哪个池。</summary>
-public enum QuestPoolKind
-{
-    /// <summary>通用型：所有角色共享。</summary>
-    General,
-
-    /// <summary>角色专属：只有对应角色能抽到。</summary>
-    Character,
-}
-
 /// <summary>一个任务的定义（静态数据，进程内唯一实例）。</summary>
 public sealed class QuestDef
 {
@@ -132,9 +122,6 @@ public sealed class QuestDef
 
     /// <summary>难度（简单 / 普通 / 困难）。</summary>
     public required QuestDifficulty Difficulty { get; init; }
-
-    /// <summary>通用型还是角色专属。</summary>
-    public required QuestPoolKind Pool { get; init; }
 
     /// <summary>角色专属时用于匹配玩家的角色关键字段（如 IRONCLAD）。</summary>
     public string? CharacterStem { get; init; }
@@ -241,7 +228,7 @@ public static class QuestPools
         // ---- 简单 ----
         new()
         {
-            Id = "gen_play_cards", Goal = QuestGoal.PlayCards, Pool = QuestPoolKind.General,
+            Id = "gen_play_cards", Goal = QuestGoal.PlayCards,
             Difficulty = QuestDifficulty.Easy,
             TitleZh = "熟练", TitleEn = "Practiced",
             DescZh = "打出 {0} 张牌。", DescEn = "Play {0} cards.",
@@ -250,7 +237,7 @@ public static class QuestPools
         },
         new()
         {
-            Id = "gen_gain_block", Goal = QuestGoal.GainBlock, Pool = QuestPoolKind.General,
+            Id = "gen_gain_block", Goal = QuestGoal.GainBlock,
             Difficulty = QuestDifficulty.Easy,
             TitleZh = "铜墙铁壁", TitleEn = "Impenetrable",
             DescZh = "获得 {0} 点格挡。", DescEn = "Gain {0} Block.",
@@ -259,7 +246,7 @@ public static class QuestPools
         },
         new()
         {
-            Id = "gen_play_attacks", Goal = QuestGoal.PlayAttacks, Pool = QuestPoolKind.General,
+            Id = "gen_play_attacks", Goal = QuestGoal.PlayAttacks,
             Difficulty = QuestDifficulty.Easy,
             TitleZh = "攻势", TitleEn = "Offensive",
             DescZh = "打出 {0} 张攻击牌。", DescEn = "Play {0} Attack cards.",
@@ -268,7 +255,7 @@ public static class QuestPools
         },
         new()
         {
-            Id = "gen_rest", Goal = QuestGoal.RestAtCampfire, Pool = QuestPoolKind.General,
+            Id = "gen_rest", Goal = QuestGoal.RestAtCampfire,
             Difficulty = QuestDifficulty.Easy,
             TitleZh = "养精蓄锐", TitleEn = "Well Rested",
             DescZh = "在火堆休息 {0} 次。", DescEn = "Rest at a campfire {0} times.",
@@ -279,7 +266,7 @@ public static class QuestPools
         // ---- 普通 ----
         new()
         {
-            Id = "gen_deal_damage", Goal = QuestGoal.DealDamage, Pool = QuestPoolKind.General,
+            Id = "gen_deal_damage", Goal = QuestGoal.DealDamage,
             Difficulty = QuestDifficulty.Easy,
             TitleZh = "重创", TitleEn = "Heavy Blows",
             DescZh = "造成 {0} 点伤害。", DescEn = "Deal {0} damage.",
@@ -288,7 +275,7 @@ public static class QuestPools
         },
         new()
         {
-            Id = "gen_play_skills", Goal = QuestGoal.PlaySkills, Pool = QuestPoolKind.General,
+            Id = "gen_play_skills", Goal = QuestGoal.PlaySkills,
             Difficulty = QuestDifficulty.Normal,
             TitleZh = "守势", TitleEn = "Defensive",
             DescZh = "打出 {0} 张技能牌。", DescEn = "Play {0} Skill cards.",
@@ -297,7 +284,7 @@ public static class QuestPools
         },
         new()
         {
-            Id = "gen_smith", Goal = QuestGoal.SmithCard, Pool = QuestPoolKind.General,
+            Id = "gen_smith", Goal = QuestGoal.SmithCard,
             Difficulty = QuestDifficulty.Normal,
             TitleZh = "千锤百炼", TitleEn = "Tempered",
             DescZh = "在火堆锻造（升级卡牌）{0} 次。", DescEn = "Smith at a campfire {0} times.",
@@ -306,7 +293,7 @@ public static class QuestPools
         },
         new()
         {
-            Id = "gen_exhaust_cards", Goal = QuestGoal.ExhaustCards, Pool = QuestPoolKind.General,
+            Id = "gen_exhaust_cards", Goal = QuestGoal.ExhaustCards,
             Difficulty = QuestDifficulty.Normal,
             TitleZh = "燃尽", TitleEn = "Burn Out",
             DescZh = "消耗 {0} 张牌。", DescEn = "Exhaust {0} cards.",
@@ -317,7 +304,7 @@ public static class QuestPools
         // ---- 困难 ----
         new()
         {
-            Id = "gen_kill_enemies", Goal = QuestGoal.KillEnemies, Pool = QuestPoolKind.General,
+            Id = "gen_kill_enemies", Goal = QuestGoal.KillEnemies,
             Difficulty = QuestDifficulty.Hard,
             TitleZh = "清场", TitleEn = "Clean Sweep",
             DescZh = "击杀 {0} 个敌人。", DescEn = "Kill {0} enemies.",
@@ -326,7 +313,7 @@ public static class QuestPools
         },
         new()
         {
-            Id = "gen_play_powers", Goal = QuestGoal.PlayPowers, Pool = QuestPoolKind.General,
+            Id = "gen_play_powers", Goal = QuestGoal.PlayPowers,
             Difficulty = QuestDifficulty.Hard,
             TitleZh = "强化", TitleEn = "Empowered",
             DescZh = "打出 {0} 张能力牌。", DescEn = "Play {0} Power cards.",
@@ -335,7 +322,7 @@ public static class QuestPools
         },
         new()
         {
-            Id = "gen_kill_elites", Goal = QuestGoal.KillElites, Pool = QuestPoolKind.General,
+            Id = "gen_kill_elites", Goal = QuestGoal.KillElites,
             Difficulty = QuestDifficulty.Hard,
             TitleZh = "猎杀精英", TitleEn = "Elite Hunter",
             DescZh = "击败 {0} 个精英敌人。", DescEn = "Kill {0} elites.",
@@ -350,7 +337,7 @@ public static class QuestPools
         // ---- 铁甲战士 ----
         new()
         {
-            Id = "ic_exhaust", Goal = QuestGoal.ExhaustCards, Pool = QuestPoolKind.Character,
+            Id = "ic_exhaust", Goal = QuestGoal.ExhaustCards,
             Difficulty = QuestDifficulty.Easy, CharacterStem = "IRONCLAD",
             TitleZh = "灰烬之路", TitleEn = "Path of Ash",
             DescZh = "消耗 {0} 张牌。", DescEn = "Exhaust {0} cards.",
@@ -359,7 +346,7 @@ public static class QuestPools
         },
         new()
         {
-            Id = "ic_gain_strength", Goal = QuestGoal.GainStrength, Pool = QuestPoolKind.Character,
+            Id = "ic_gain_strength", Goal = QuestGoal.GainStrength,
             Difficulty = QuestDifficulty.Normal, CharacterStem = "IRONCLAD",
             TitleZh = "力量至上", TitleEn = "Might Makes Right",
             DescZh = "获得 {0} 点力量。", DescEn = "Gain {0} Strength.",
@@ -368,7 +355,7 @@ public static class QuestPools
         },
         new()
         {
-            Id = "ic_attack_damage", Goal = QuestGoal.AttackDamage, Pool = QuestPoolKind.Character,
+            Id = "ic_attack_damage", Goal = QuestGoal.AttackDamage,
             Difficulty = QuestDifficulty.Hard, CharacterStem = "IRONCLAD",
             TitleZh = "以攻代守", TitleEn = "Attack Is Defense",
             DescZh = "用攻击牌造成 {0} 点伤害。", DescEn = "Deal {0} damage with Attacks.",
@@ -379,7 +366,7 @@ public static class QuestPools
         // ---- 静默猎手 ----
         new()
         {
-            Id = "si_discard", Goal = QuestGoal.DiscardCards, Pool = QuestPoolKind.Character,
+            Id = "si_discard", Goal = QuestGoal.DiscardCards,
             Difficulty = QuestDifficulty.Easy, CharacterStem = "SILENT",
             TitleZh = "取舍", TitleEn = "Triage",
             DescZh = "弃掉 {0} 张牌。", DescEn = "Discard {0} cards.",
@@ -388,7 +375,7 @@ public static class QuestPools
         },
         new()
         {
-            Id = "si_play_skills", Goal = QuestGoal.PlaySkills, Pool = QuestPoolKind.Character,
+            Id = "si_play_skills", Goal = QuestGoal.PlaySkills,
             Difficulty = QuestDifficulty.Normal, CharacterStem = "SILENT",
             TitleZh = "身法", TitleEn = "Footwork",
             DescZh = "打出 {0} 张技能牌。", DescEn = "Play {0} Skill cards.",
@@ -397,7 +384,7 @@ public static class QuestPools
         },
         new()
         {
-            Id = "si_apply_poison", Goal = QuestGoal.ApplyPoison, Pool = QuestPoolKind.Character,
+            Id = "si_apply_poison", Goal = QuestGoal.ApplyPoison,
             Difficulty = QuestDifficulty.Hard, CharacterStem = "SILENT",
             TitleZh = "淬毒", TitleEn = "Envenom",
             DescZh = "施加 {0} 层中毒。", DescEn = "Apply {0} Poison.",
@@ -408,7 +395,7 @@ public static class QuestPools
         // ---- 故障机器人 ----
         new()
         {
-            Id = "df_evoke_orbs", Goal = QuestGoal.EvokeOrbs, Pool = QuestPoolKind.Character,
+            Id = "df_evoke_orbs", Goal = QuestGoal.EvokeOrbs,
             Difficulty = QuestDifficulty.Easy, CharacterStem = "DEFECT",
             TitleZh = "激发", TitleEn = "Evocation",
             DescZh = "激发 {0} 个球。", DescEn = "Evoke {0} Orbs.",
@@ -417,7 +404,7 @@ public static class QuestPools
         },
         new()
         {
-            Id = "df_channel_orbs", Goal = QuestGoal.ChannelOrbs, Pool = QuestPoolKind.Character,
+            Id = "df_channel_orbs", Goal = QuestGoal.ChannelOrbs,
             Difficulty = QuestDifficulty.Normal, CharacterStem = "DEFECT",
             TitleZh = "充能", TitleEn = "Charging Up",
             DescZh = "充能 {0} 个球。", DescEn = "Channel {0} Orbs.",
@@ -426,7 +413,7 @@ public static class QuestPools
         },
         new()
         {
-            Id = "df_gain_focus", Goal = QuestGoal.GainFocus, Pool = QuestPoolKind.Character,
+            Id = "df_gain_focus", Goal = QuestGoal.GainFocus,
             Difficulty = QuestDifficulty.Hard, CharacterStem = "DEFECT",
             TitleZh = "聚焦", TitleEn = "Focus",
             DescZh = "获得 {0} 点集中。", DescEn = "Gain {0} Focus.",
@@ -437,7 +424,7 @@ public static class QuestPools
         // ---- 死灵缚者 ----
         new()
         {
-            Id = "nb_exhaust", Goal = QuestGoal.ExhaustCards, Pool = QuestPoolKind.Character,
+            Id = "nb_exhaust", Goal = QuestGoal.ExhaustCards,
             Difficulty = QuestDifficulty.Easy, CharacterStem = "NECROBINDER",
             TitleZh = "献祭", TitleEn = "Sacrifice",
             DescZh = "消耗 {0} 张牌。", DescEn = "Exhaust {0} cards.",
@@ -446,7 +433,7 @@ public static class QuestPools
         },
         new()
         {
-            Id = "nb_summon", Goal = QuestGoal.Summon, Pool = QuestPoolKind.Character,
+            Id = "nb_summon", Goal = QuestGoal.Summon,
             Difficulty = QuestDifficulty.Normal, CharacterStem = "NECROBINDER",
             TitleZh = "召唤仪式", TitleEn = "Rite of Summoning",
             DescZh = "召唤 {0} 次。", DescEn = "Summon {0} times.",
@@ -455,7 +442,7 @@ public static class QuestPools
         },
         new()
         {
-            Id = "nb_kill", Goal = QuestGoal.KillEnemies, Pool = QuestPoolKind.Character,
+            Id = "nb_kill", Goal = QuestGoal.KillEnemies,
             Difficulty = QuestDifficulty.Hard, CharacterStem = "NECROBINDER",
             TitleZh = "收割", TitleEn = "Reaping",
             DescZh = "击杀 {0} 个敌人。", DescEn = "Kill {0} enemies.",
@@ -466,7 +453,7 @@ public static class QuestPools
         // ---- 摄政王 ----
         new()
         {
-            Id = "rg_forge", Goal = QuestGoal.Forge, Pool = QuestPoolKind.Character,
+            Id = "rg_forge", Goal = QuestGoal.Forge,
             Difficulty = QuestDifficulty.Easy, CharacterStem = "REGENT",
             TitleZh = "锻造", TitleEn = "Forge",
             DescZh = "锻造 {0} 次。", DescEn = "Forge {0} times.",
@@ -475,7 +462,7 @@ public static class QuestPools
         },
         new()
         {
-            Id = "rg_gain_stars", Goal = QuestGoal.GainStars, Pool = QuestPoolKind.Character,
+            Id = "rg_gain_stars", Goal = QuestGoal.GainStars,
             Difficulty = QuestDifficulty.Normal, CharacterStem = "REGENT",
             TitleZh = "星辰", TitleEn = "Starlight",
             DescZh = "获得 {0} 点星辰。", DescEn = "Gain {0} Stars.",
@@ -484,7 +471,7 @@ public static class QuestPools
         },
         new()
         {
-            Id = "rg_powers", Goal = QuestGoal.PlayPowers, Pool = QuestPoolKind.Character,
+            Id = "rg_powers", Goal = QuestGoal.PlayPowers,
             Difficulty = QuestDifficulty.Hard, CharacterStem = "REGENT",
             TitleZh = "王权", TitleEn = "Royal Decree",
             DescZh = "打出 {0} 张能力牌。", DescEn = "Play {0} Power cards.",
@@ -495,7 +482,7 @@ public static class QuestPools
         // ---- 观者（独立 mod 角色）----
         new()
         {
-            Id = "wt_stance", Goal = QuestGoal.PlayAttacks, Pool = QuestPoolKind.Character,
+            Id = "wt_stance", Goal = QuestGoal.PlayAttacks,
             Difficulty = QuestDifficulty.Easy, CharacterStem = "WATCHER",
             TitleZh = "制敌先机", TitleEn = "Seize the Initiative",
             DescZh = "打出 {0} 张攻击牌。", DescEn = "Play {0} Attack cards.",
@@ -504,7 +491,7 @@ public static class QuestPools
         },
         new()
         {
-            Id = "wt_scry", Goal = QuestGoal.PlaySkills, Pool = QuestPoolKind.Character,
+            Id = "wt_scry", Goal = QuestGoal.PlaySkills,
             Difficulty = QuestDifficulty.Normal, CharacterStem = "WATCHER",
             TitleZh = "观照", TitleEn = "Contemplate",
             DescZh = "打出 {0} 张技能牌。", DescEn = "Play {0} Skill cards.",
@@ -513,7 +500,7 @@ public static class QuestPools
         },
         new()
         {
-            Id = "wt_exhaust", Goal = QuestGoal.ExhaustCards, Pool = QuestPoolKind.Character,
+            Id = "wt_exhaust", Goal = QuestGoal.ExhaustCards,
             Difficulty = QuestDifficulty.Hard, CharacterStem = "WATCHER",
             TitleZh = "断舍离", TitleEn = "Letting Go",
             DescZh = "消耗 {0} 张牌。", DescEn = "Exhaust {0} cards.",

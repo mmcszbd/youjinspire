@@ -36,3 +36,13 @@ youjin.pck
 
 # ── FMOD 编辑器临时产物 ──
 ~libGodotFmod*.dll
+
+# ── 本地工作目录（DSH 的临时脚本、目录索引、ACL 修复备份）──
+.dsh-*/
+
+# ── 导出 / 分发产物（能由 project.godot + Scripts 重新生成）──
+/dist/
+
+# ── 手工备份 ──
+*.bak
+*.bak-*

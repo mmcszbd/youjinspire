@@ -206,52 +206,35 @@ public sealed class TrustChallengeEvent : ModEventTemplate
     /// <summary>把标题、开场白、两个选项和三段结果文案注入 events 表（当前语言）。</summary>
     private void EnsureLocalized()
     {
-        try
-        {
-            var loc = LocManager.Instance;
-            var table = loc?.GetTable(LocTable);
-            if (loc is null || table is null)
-                return;
-
             var id = Id.Entry;
-            if (table.HasEntry($"{id}.title"))
-                return;
-
-            var chinese = (loc.Language ?? string.Empty).StartsWith("zh", StringComparison.OrdinalIgnoreCase);
             var paidKey = InitialOptionKey("PAID");
             var bluffKey = InitialOptionKey("BLUFF");
-
-            table.MergeWith(new Dictionary<string, string>
-            {
-                [$"{id}.title"] = chinese ? "信任挑战" : "Trust Challenge",
-                [$"{id}.pages.INITIAL.description"] = chinese
-                    ? "路边有个深不见底的石洞，洞壁上刻着字：「放钱进来，倘若同心者众，可得三倍回报；若只是虚晃一手，洞里空空如也。」"
-                    : "A bottomless stone hole sits by the road. Carved words read: \"Pay in. If enough of you mean it, you'll be repaid threefold. Bluff, and nothing happens.\"",
-
-                [$"{paidKey}.title"] = chinese ? "放入金币" : "Pay In",
-                [$"{paidKey}.description"] = chinese
-                    ? $"交出 [blue]{Cost}[/blue] 金币。只要超过一半的人真这么做，所有人各得 [blue]{Reward}[/blue] 金币。"
-                    : $"Hand over {Cost} gold. If more than half of you truly do it, everyone gains {Reward} gold.",
-
-                [$"{bluffKey}.title"] = chinese ? "假装放入" : "Bluff",
-                [$"{bluffKey}.description"] = chinese
-                    ? "装模作样地往里扔一把，其实一分钱也不出。如果所有人都这么做，每人会得到一张[red]「羞耻」[/red]。"
-                    : "Pretend to toss coins in, paying nothing.",
-
-                [$"{id}.pages.SUCCESS.description"] = chinese
-                    ? $"石洞轰隆作响，金币像泉水一样涌出来——每人分到 [blue]{Reward}[/blue] 金币。"
-                    : $"The hole rumbles and coins pour out — everyone gains {Reward} gold.",
-                [$"{id}.pages.NOTHING.description"] = chinese
-                    ? "石洞沉默不语。有人真心，有人装样，谁也没得到什么。"
-                    : "The hole stays silent. Some meant it, some didn't, and nobody gained anything.",
-                [$"{id}.pages.SHAME.description"] = chinese
-                    ? "石洞看穿了你们。每个人手里都多了一张[red]「羞耻」[/red]。"
-                    : "The hole sees through all of you. Everyone receives a Shame.",
-            });
-        }
-        catch (Exception ex)
+        LocInject.Merge(LocTable, $"{id}.title", chinese => new Dictionary<string, string>
         {
-            Entry.Logger.Info($"信任挑战：本地化注入失败 {ex}");
-        }
+            [$"{id}.title"] = chinese ? "信任挑战" : "Trust Challenge",
+            [$"{id}.pages.INITIAL.description"] = chinese
+                ? "路边有个深不见底的石洞，洞壁上刻着字：「放钱进来，倘若同心者众，可得三倍回报；若只是虚晃一手，洞里空空如也。」"
+                : "A bottomless stone hole sits by the road. Carved words read: \"Pay in. If enough of you mean it, you'll be repaid threefold. Bluff, and nothing happens.\"",
+
+            [$"{paidKey}.title"] = chinese ? "放入金币" : "Pay In",
+            [$"{paidKey}.description"] = chinese
+                ? $"交出 [blue]{Cost}[/blue] 金币。只要超过一半的人真这么做，所有人各得 [blue]{Reward}[/blue] 金币。"
+                : $"Hand over {Cost} gold. If more than half of you truly do it, everyone gains {Reward} gold.",
+
+            [$"{bluffKey}.title"] = chinese ? "假装放入" : "Bluff",
+            [$"{bluffKey}.description"] = chinese
+                ? "装模作样地往里扔一把，其实一分钱也不出。如果所有人都这么做，每人会得到一张[red]「羞耻」[/red]。"
+                : "Pretend to toss coins in, paying nothing.",
+
+            [$"{id}.pages.SUCCESS.description"] = chinese
+                ? $"石洞轰隆作响，金币像泉水一样涌出来——每人分到 [blue]{Reward}[/blue] 金币。"
+                : $"The hole rumbles and coins pour out — everyone gains {Reward} gold.",
+            [$"{id}.pages.NOTHING.description"] = chinese
+                ? "石洞沉默不语。有人真心，有人装样，谁也没得到什么。"
+                : "The hole stays silent. Some meant it, some didn't, and nobody gained anything.",
+            [$"{id}.pages.SHAME.description"] = chinese
+                ? "石洞看穿了你们。每个人手里都多了一张[red]「羞耻」[/red]。"
+                : "The hole sees through all of you. Everyone receives a Shame.",
+        }, "信任挑战");
     }
 }

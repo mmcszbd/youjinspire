@@ -431,16 +431,6 @@ public static class QuestService
             + string.Join("、", stolenTitles) + "（奖励翻倍）");
     }
 
-    /// <summary>只推进"当前正在出牌的那个玩家"的进度（跨客户端一致，阶段 2 用）。</summary>
-    public static List<QuestProgress> ReportForActionOwner(QuestGoal goal, int amount)
-    {
-        if (!Enabled)
-            return new List<QuestProgress>();
-
-        var owner = ActionOwner();
-        return owner is null ? new List<QuestProgress>() : Report(owner, goal, amount);
-    }
-
     /// <summary>
     /// 当前正在执行动作的玩家（所有客户端结果一致）。
     /// 用 RunManager.ActionExecutor.CurrentlyRunningAction.OwnerId 反查，

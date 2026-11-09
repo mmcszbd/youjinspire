@@ -158,52 +158,35 @@ public sealed class StandInStoneEvent : ModEventTemplate
     /// <summary>标题 / 开场 / 两个选项 / 两段结果文案注入 events 表。</summary>
     private void EnsureLocalized()
     {
-        try
-        {
-            var loc = LocManager.Instance;
-            var table = loc?.GetTable(LocTable);
-            if (loc is null || table is null)
-                return;
-
             var id = Id.Entry;
-            if (table.HasEntry($"{id}.title"))
-                return;
-
-            var chinese = (loc.Language ?? string.Empty).StartsWith("zh", StringComparison.OrdinalIgnoreCase);
             var shiftKey = InitialOptionKey("SHIFT");
             var goldKey = InitialOptionKey("GOLD");
-
-            table.MergeWith(new Dictionary<string, string>
-            {
-                [$"{id}.title"] = chinese ? "替身之石" : "The Stand-In Stone",
-                [$"{id}.pages.INITIAL.description"] = chinese
-                    ? "路旁立着一尊人形石像，脚下散落着一些钱币。雕像胸口刻着一行字：「把痛苦推给别人，也是一种活法。」"
-                    : "A humanoid statue stands by the road, coins scattered at its feet. Words are carved on its chest: \"Pushing your pain onto someone else is also a way to live.\"",
-
-                [$"{shiftKey}.title"] = chinese ? "触碰石像" : "Touch the Stone",
-                [$"{shiftKey}.description"] = chinese
-                    ? "从自己牌组里选一张[red]诅咒[/red]（永恒诅咒也行）交给一名队友：你失去它，他得到一张一模一样的。"
-                    : "Give one of your Curses (Eternal ones included) to a teammate: you lose it, they gain an identical copy.",
-
-                [$"{goldKey}.title"] = chinese ? "捡起钱币" : "Take the Coins",
-                [$"{goldKey}.description"] = chinese
-                    ? $"捡走石像周围散落的 [blue]{GoldAmount}[/blue] 金币。"
-                    : $"Pick up the {GoldAmount} gold scattered around the statue.",
-
-                [$"{id}.pages.SUCCESS.description"] = chinese
-                    ? "石像发出一声低笑。你身上的[red]诅咒[/red]已经转到别人身上——他大概还不知道。"
-                    : "The statue chuckles. Your curse now belongs to someone else — who probably doesn't know yet.",
-                [$"{id}.pages.GOLD.description"] = chinese
-                    ? "你把石像脚下的钱币收进兜里，石像的表情似乎更阴沉了。"
-                    : "You pocket the gold at the statue's feet. Its expression seems to darken.",
-                [$"{id}.pages.NOTHING.description"] = chinese
-                    ? "石像纹丝不动。什么也没发生。"
-                    : "The statue stays still. Nothing happens.",
-            });
-        }
-        catch (Exception ex)
+        LocInject.Merge(LocTable, $"{id}.title", chinese => new Dictionary<string, string>
         {
-            Entry.Logger.Info($"替身之石：本地化注入失败 {ex}");
-        }
+            [$"{id}.title"] = chinese ? "替身之石" : "The Stand-In Stone",
+            [$"{id}.pages.INITIAL.description"] = chinese
+                ? "路旁立着一尊人形石像，脚下散落着一些钱币。雕像胸口刻着一行字：「把痛苦推给别人，也是一种活法。」"
+                : "A humanoid statue stands by the road, coins scattered at its feet. Words are carved on its chest: \"Pushing your pain onto someone else is also a way to live.\"",
+
+            [$"{shiftKey}.title"] = chinese ? "触碰石像" : "Touch the Stone",
+            [$"{shiftKey}.description"] = chinese
+                ? "从自己牌组里选一张[red]诅咒[/red]（永恒诅咒也行）交给一名队友：你失去它，他得到一张一模一样的。"
+                : "Give one of your Curses (Eternal ones included) to a teammate: you lose it, they gain an identical copy.",
+
+            [$"{goldKey}.title"] = chinese ? "捡起钱币" : "Take the Coins",
+            [$"{goldKey}.description"] = chinese
+                ? $"捡走石像周围散落的 [blue]{GoldAmount}[/blue] 金币。"
+                : $"Pick up the {GoldAmount} gold scattered around the statue.",
+
+            [$"{id}.pages.SUCCESS.description"] = chinese
+                ? "石像发出一声低笑。你身上的[red]诅咒[/red]已经转到别人身上——他大概还不知道。"
+                : "The statue chuckles. Your curse now belongs to someone else — who probably doesn't know yet.",
+            [$"{id}.pages.GOLD.description"] = chinese
+                ? "你把石像脚下的钱币收进兜里，石像的表情似乎更阴沉了。"
+                : "You pocket the gold at the statue's feet. Its expression seems to darken.",
+            [$"{id}.pages.NOTHING.description"] = chinese
+                ? "石像纹丝不动。什么也没发生。"
+                : "The statue stays still. Nothing happens.",
+        }, "替身之石");
     }
 }

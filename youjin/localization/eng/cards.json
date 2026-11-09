@@ -1,0 +1,31 @@
+{
+  "YOUJIN_CARD_BLOOD_SACRIFICE.title": "Blood Sacrifice",
+  "YOUJIN_CARD_BLOOD_SACRIFICE.description": "[gold]Exhaust[/gold].\nAll teammates lose {HpLoss:diff()} HP.\nGain {Energy:energyIcons()} and draw {Cards:diff()} cards.",
+
+  "YOUJIN_CARD_BURN_IT_ALL.title": "Burn It All",
+  "YOUJIN_CARD_BURN_IT_ALL.description": "[gold]Exhaust[/gold].\n[gold]Exhaust[/gold] your hand and every teammate's hand.\nDeal {Damage:diff()} damage for each card exhausted.",
+
+  "YOUJIN_CARD_TEAMMATES_GO_FIRST.title": "Teammates Go First",
+  "YOUJIN_CARD_TEAMMATES_GO_FIRST.description": "Choose a teammate.\nYou take {DamageDecrease:percentLess()}% less damage from enemies.\nThat teammate takes {DamageIncrease:percentMore()}% more damage from enemies.",
+
+  "YOUJIN_CARD_FULL_CONCENTRATION.title": "Full Concentration",
+  "YOUJIN_CARD_FULL_CONCENTRATION.description": "Each teammate randomly [gold]discards[/gold] a card.\nGain {Energy:energyIcons()} for each card discarded.",
+
+  "YOUJIN_CARD_SPARKS_FLY.title": "Sparks Fly",
+  "YOUJIN_CARD_SPARKS_FLY.description": "[gold]Forge[/gold] {Forge:diff()}.\nAdd a [gold]Debris[/gold] to every other player's hand.",
+
+  "YOUJIN_CARD_LEND_IT_TO_ME.title": "Lend It To Me",
+  "YOUJIN_CARD_LEND_IT_TO_ME.description": "All teammates gain {FrailPower:diff()} [gold]Frail[/gold].\nGain {Stars:starIcons()} and {Energy:energyIcons()}.",
+
+  "YOUJIN_CARD_DARK_MAGIC.title": "Dark Magic",
+  "YOUJIN_CARD_DARK_MAGIC.description": "All teammates gain {DoomPower:diff()} [gold]Doom[/gold].\nAdd {Cards:diff()} [gold]Soul[/gold] cards to your hand.",
+
+  "YOUJIN_CARD_TABOO_FORCE.title": "Forbidden Power",
+  "YOUJIN_CARD_TABOO_FORCE.description": "[gold]Exhaust[/gold].\nAll teammates gain [gold]Borrowed Time[/gold]: cards cost {ExtraCost:energyIcons()} more this turn.\nAll cards in your hand gain [gold]Replay[/gold] {Replay:diff()}.",
+
+  "YOUJIN_CARD_TRANSFER_ENERGY.title": "Transfer Energy",
+  "YOUJIN_CARD_TRANSFER_ENERGY.description": "All teammates lose {StrengthPower:diff()} [gold]Strength[/gold] and {DexterityPower:diff()} [gold]Dexterity[/gold].\nGain {FocusPower:diff()} [gold]Focus[/gold].",
+
+  "YOUJIN_CARD_CORRECT_COGNITION.title": "Correct Cognition",
+  "YOUJIN_CARD_CORRECT_COGNITION.description": "Double your [gold]Focus[/gold].\nAdd {Cards:diff()} [gold]Wound[/gold] cards to every other player's hand."
+}

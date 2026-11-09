@@ -1,0 +1,5 @@
+{
+  "YOUJIN_POWER_TEAMMATE_FIRST_POWER.title": "队友先上",
+  "YOUJIN_POWER_TEAMMATE_FIRST_POWER.description": "受到的敌人伤害减少{DamageDecrease:percentLess()}%。\n指定的队友受到的敌人伤害增加{DamageIncrease:percentMore()}%。",
+  "YOUJIN_POWER_TEAMMATE_FIRST_POWER.smartDescription": "受到的敌人伤害减少{DamageDecrease:percentLess()}%。\n指定的队友受到的敌人伤害增加{DamageIncrease:percentMore()}%。"
+}

@@ -1,0 +1,31 @@
+{
+  "YOUJIN_CARD_BLOOD_SACRIFICE.title": "献祭",
+  "YOUJIN_CARD_BLOOD_SACRIFICE.description": "所有队友失去{HpLoss:diff()}点生命。\n获得{Energy:energyIcons()}，抽{Cards:diff()}张牌。",
+
+  "YOUJIN_CARD_BURN_IT_ALL.title": "拼尽一切",
+  "YOUJIN_CARD_BURN_IT_ALL.description": "[gold]消耗[/gold]你和所有队友的[gold]手牌[/gold]。\n每张被[gold]消耗[/gold]的牌造成{Damage:diff()}点伤害。",
+
+  "YOUJIN_CARD_TEAMMATES_GO_FIRST.title": "队友先上",
+  "YOUJIN_CARD_TEAMMATES_GO_FIRST.description": "选择一名队友。\n你受到的敌人伤害减少{DamageDecrease:percentLess()}%。\n该队友受到的敌人伤害增加{DamageIncrease:percentMore()}%。",
+
+  "YOUJIN_CARD_FULL_CONCENTRATION.title": "全神贯注",
+  "YOUJIN_CARD_FULL_CONCENTRATION.description": "所有队友随机[gold]丢弃[/gold]一张牌。\n每有一张牌被丢弃，获得{Energy:energyIcons()}。",
+
+  "YOUJIN_CARD_SPARKS_FLY.title": "火花四溅",
+  "YOUJIN_CARD_SPARKS_FLY.description": "[gold]铸造[/gold]{Forge:diff()}。\n其他所有玩家的[gold]手牌[/gold]里加入一张[gold]碎屑[/gold]。",
+
+  "YOUJIN_CARD_LEND_IT_TO_ME.title": "借我一用",
+  "YOUJIN_CARD_LEND_IT_TO_ME.description": "所有队友获得{FrailPower:diff()}层[gold]脆弱[/gold]。\n获得{Stars:starIcons()}和{Energy:energyIcons()}。",
+
+  "YOUJIN_CARD_DARK_MAGIC.title": "暗黑魔法",
+  "YOUJIN_CARD_DARK_MAGIC.description": "所有队友获得{DoomPower:diff()}层[gold]灾厄[/gold]。\n将{Cards:diff()}张[gold]灵魂[/gold]加入你的[gold]手牌[/gold]。",
+
+  "YOUJIN_CARD_TABOO_FORCE.title": "禁忌之力",
+  "YOUJIN_CARD_TABOO_FORCE.description": "所有队友获得[gold]预借时间[/gold]：本回合卡牌耗能增加{ExtraCost:energyIcons()}。\n你[gold]手牌[/gold]中的所有牌获得[gold]重放[/gold]{Replay:diff()}。",
+
+  "YOUJIN_CARD_TRANSFER_ENERGY.title": "输送能量",
+  "YOUJIN_CARD_TRANSFER_ENERGY.description": "所有队友失去{StrengthPower:diff()}点[gold]力量[/gold]和{DexterityPower:diff()}点[gold]敏捷[/gold]。\n获得{FocusPower:diff()}点[gold]集中[/gold]。",
+
+  "YOUJIN_CARD_CORRECT_COGNITION.title": "认知正确",
+  "YOUJIN_CARD_CORRECT_COGNITION.description": "使你的[gold]集中[/gold]翻倍。\n其他所有玩家的[gold]手牌[/gold]里加入{Cards:diff()}张[gold]伤口[/gold]。"
+}

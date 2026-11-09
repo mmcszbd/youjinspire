@@ -331,25 +331,12 @@ public static class QuestRewards
     {
         var value = Math.Max(1, amount);
         var key = MaxHpKey(value);
-
-        try
+        LocInject.Merge(DescriptionLocTable, key, chinese => new Dictionary<string, string>
         {
-            var table = LocManager.Instance?.GetTable(DescriptionLocTable);
-            if (table is null || table.HasEntry(key))
-                return;
-
-            var chinese = QuestText.IsChinese;
-            table.MergeWith(new Dictionary<string, string>
-            {
-                [key] = chinese
-                    ? $"本层任务奖励：最大生命 +{value}"
-                    : $"Act quest reward: Max HP +{value}",
-            });
-        }
-        catch (Exception ex)
-        {
-            Entry.Logger.Info($"任务模式：注入奖励文案失败（{key}）{ex}");
-        }
+            [key] = chinese
+                ? $"本层任务奖励：最大生命 +{value}"
+                : $"Act quest reward: Max HP +{value}",
+        }, $"任务模式：{key}");
     }
 
 }

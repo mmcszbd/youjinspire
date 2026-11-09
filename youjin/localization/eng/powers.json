@@ -1,0 +1,5 @@
+{
+  "YOUJIN_POWER_TEAMMATE_FIRST_POWER.title": "Teammates Go First",
+  "YOUJIN_POWER_TEAMMATE_FIRST_POWER.description": "Take {DamageDecrease:percentLess()}% less damage from enemies.\nThe chosen teammate takes {DamageIncrease:percentMore()}% more damage from enemies.",
+  "YOUJIN_POWER_TEAMMATE_FIRST_POWER.smartDescription": "Take {DamageDecrease:percentLess()}% less damage from enemies.\nThe chosen teammate takes {DamageIncrease:percentMore()}% more damage from enemies."
+}

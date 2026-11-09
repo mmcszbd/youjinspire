@@ -2,41 +2,41 @@
   "YOUJIN_EVENT_FAIR_JUDGE_EVENT.title": "「公平」的法官",
   "YOUJIN_EVENT_FAIR_JUDGE_EVENT.pages.INITIAL.description": "一位自称绝对公平的法官拦住去路。希望帮你们主持公道",
   "YOUJIN_EVENT_FAIR_JUDGE_EVENT.pages.RESULT.description": "法官敲下法槌，宣布这很公平。",
-
   "YOUJIN_EVENT_FAIR_JUDGE_EVENT.pages.INITIAL.options.GOLD.title": "我的金币被偷了",
   "YOUJIN_EVENT_FAIR_JUDGE_EVENT.pages.INITIAL.options.GOLD.description": "只有[blue]金币[/blue]最少的人能选：从最有钱的玩家那里扣钱补给你，直到两人金币数相同。",
   "YOUJIN_EVENT_FAIR_JUDGE_EVENT.pages.INITIAL.options.RELIC.title": "我的遗物被抢了",
   "YOUJIN_EVENT_FAIR_JUDGE_EVENT.pages.INITIAL.options.RELIC.description": "只有[gold]遗物[/gold]最少的人能选：夺走遗物最多的玩家最近获得的那件[gold]遗物[/gold]，并补给你一件同款新遗物（他会失去它）。",
   "YOUJIN_EVENT_FAIR_JUDGE_EVENT.pages.INITIAL.options.HARMONY.title": "我的团队和谐友爱",
   "YOUJIN_EVENT_FAIR_JUDGE_EVENT.pages.INITIAL.options.HARMONY.description": "法官很满意，赏你 [blue]30[/blue] 金币。",
-
   "YOUJIN_EVENT_TRUST_CHALLENGE_EVENT.title": "信任挑战",
   "YOUJIN_EVENT_TRUST_CHALLENGE_EVENT.pages.INITIAL.description": "路边有个深不见底的石洞，洞壁上刻着字：「放钱进来，倘若同心者众，人人皆有厚报；若只是虚晃一手，洞里空空如也。」",
   "YOUJIN_EVENT_TRUST_CHALLENGE_EVENT.pages.SUCCESS.description": "石洞轰隆作响，金币像泉水一样涌出来——每人分到 [blue]150[/blue] 金币。",
   "YOUJIN_EVENT_TRUST_CHALLENGE_EVENT.pages.NOTHING.description": "石洞沉默不语。什么都没有发生。",
   "YOUJIN_EVENT_TRUST_CHALLENGE_EVENT.pages.SHAME.description": "石洞看穿了你们。每个人手里都多了一张[red]「羞耻」[/red]。",
-
   "YOUJIN_EVENT_TRUST_CHALLENGE_EVENT.pages.INITIAL.options.PAID.title": "放入金币",
   "YOUJIN_EVENT_TRUST_CHALLENGE_EVENT.pages.INITIAL.options.PAID.description": "交出 [blue]50[/blue] 金币。。",
   "YOUJIN_EVENT_TRUST_CHALLENGE_EVENT.pages.INITIAL.options.BLUFF.title": "假装放入",
   "YOUJIN_EVENT_TRUST_CHALLENGE_EVENT.pages.INITIAL.options.BLUFF.description": "装模作样地往里扔一把，其实一分钱也不出。",
-
   "YOUJIN_EVENT_STAND_IN_STONE_EVENT.title": "替身之石",
   "YOUJIN_EVENT_STAND_IN_STONE_EVENT.pages.INITIAL.description": "路旁立着一尊人形石像，脚下散落着一些钱币。诅咒好像被雕像吸引了",
   "YOUJIN_EVENT_STAND_IN_STONE_EVENT.pages.SUCCESS.description": "石像发出一声低笑。你身上的[red]诅咒[/red]已经转到别人身上——他大概还不知道。",
   "YOUJIN_EVENT_STAND_IN_STONE_EVENT.pages.GOLD.description": "你把石像脚下的钱币收进兜里，石像的表情似乎更阴沉了。",
   "YOUJIN_EVENT_STAND_IN_STONE_EVENT.pages.NOTHING.description": "石像纹丝不动。什么也没发生。",
-
   "YOUJIN_EVENT_STAND_IN_STONE_EVENT.pages.INITIAL.options.SHIFT.title": "触碰石像",
   "YOUJIN_EVENT_STAND_IN_STONE_EVENT.pages.INITIAL.options.SHIFT.description": "从自己牌组里选一张[red]诅咒[/red]也行交给一名队友",
   "YOUJIN_EVENT_STAND_IN_STONE_EVENT.pages.INITIAL.options.GOLD.title": "捡起钱币",
   "YOUJIN_EVENT_STAND_IN_STONE_EVENT.pages.INITIAL.options.GOLD.description": "捡走石像周围散落的 [blue]57[/blue] 金币。",
-
   "YOUJIN_EVENT_ARCHITECT_BETRAYAL_EVENT.title": "建筑师的挑拨",
   "YOUJIN_EVENT_ARCHITECT_BETRAYAL_EVENT.pages.INITIAL.description": "建筑师坐在王座上，指尖捻着一缕光，玩味的看着你们。我可以实现你们的愿望，复活家人？修复朋友？治好疾病？但是只能实现一个人的愿望。你们互相对视，心里都明白：谁也不想放弃自己的愿望。",
   "YOUJIN_EVENT_ARCHITECT_BETRAYAL_EVENT.pages.INITIAL.options.FIGHT.title": "战斗",
   "YOUJIN_EVENT_ARCHITECT_BETRAYAL_EVENT.pages.INITIAL.options.FIGHT.description": "你们互相厮杀，直到只剩下一个人。胜利者获得那缕光。",
   "YOUJIN_EVENT_ARCHITECT_BETRAYAL_EVENT.pages.INITIAL.options.REFUSE.title": "不战斗",
   "YOUJIN_EVENT_ARCHITECT_BETRAYAL_EVENT.pages.INITIAL.options.REFUSE.description": "你们的敌人是建筑师，不是身边的朋友",
-  "YOUJIN_EVENT_ARCHITECT_BETRAYAL_EVENT.pages.FINALE.description": "建筑师笑了笑，团结也没什么用"
+  "YOUJIN_EVENT_ARCHITECT_BETRAYAL_EVENT.pages.FINALE.description": "建筑师笑了笑，团结也没什么用",
+  "YOUJIN_EVENT_BATTLE_BATTLE_BATTLE_EVENT.title": "战战战！！！",
+  "YOUJIN_EVENT_BATTLE_BATTLE_BATTLE_EVENT.pages.INITIAL.description": "来战个痛快吧！",
+  "YOUJIN_EVENT_BATTLE_BATTLE_BATTLE_EVENT.pages.FINALE.description": "杀杀杀",
+  "YOUJIN_EVENT_ARCHITECT_PROVOKE_EVENT.title": "建筑师的挑拨",
+  "YOUJIN_EVENT_ARCHITECT_PROVOKE_EVENT.pages.INITIAL.description": "建筑师坐在王座上，指尖捻着一缕光，扫了一眼你们身上的战利品。",
+  "YOUJIN_EVENT_ARCHITECT_PROVOKE_EVENT.pages.FINALE.description": "建筑师把光收进袖子里，往前倾了倾身：「还不够。再来。」"
 }

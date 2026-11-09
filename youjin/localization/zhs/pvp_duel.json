@@ -1,0 +1,15 @@
+{
+  "PVP_DUEL_ACT_PVP_DUEL_ACT.title": "PVP 决斗",
+  "PVP_DUEL_EVENT_DUEL_INVITATION_EVENT.title": "对决邀请",
+  "PVP_DUEL_EVENT_DUEL_INVITATION_EVENT.pages.INITIAL.description": "两道光柱在地面交织，映出你们两人的影子。既然共用一条路，不如先分出高下——胜者继续前行，败者退出这场冒险。",
+  "PVP_DUEL_EVENT_DUEL_INVITATION_EVENT.pages.INITIAL.options.BEGIN.title": "接受对决",
+  "PVP_DUEL_EVENT_DUEL_INVITATION_EVENT.pages.INITIAL.options.BEGIN.description": "进入决斗：没有怪物，两人轮流行动，谁先倒下谁输。",
+  "PVP_DUEL_EVENT_DUEL_INVITATION_EVENT.pages.BEGIN.description": "光柱收拢，场地清空。你们各自握紧了手中的牌。",
+
+  "YOUJIN_ACT_PVP_DUEL_ACT.title": "PVP 决斗",
+  "YOUJIN_EVENT_DUEL_INVITATION_EVENT.title": "对决邀请",
+  "YOUJIN_EVENT_DUEL_INVITATION_EVENT.pages.INITIAL.description": "两道光柱在地面交织，映出你们两人的影子。既然共用一条路，不如先分出高下——胜者继续前行，败者退出这场冒险。",
+  "YOUJIN_EVENT_DUEL_INVITATION_EVENT.pages.INITIAL.options.BEGIN.title": "接受对决",
+  "YOUJIN_EVENT_DUEL_INVITATION_EVENT.pages.INITIAL.options.BEGIN.description": "进入决斗：没有怪物，两人轮流行动，谁先倒下谁输。",
+  "YOUJIN_EVENT_DUEL_INVITATION_EVENT.pages.BEGIN.description": "光柱收拢，场地清空。你们各自握紧了手中的牌。"
+}

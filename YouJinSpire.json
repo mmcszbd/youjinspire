@@ -2,14 +2,14 @@
   "id": "youjin",
   "name": "友尽尖塔",
   "author": "作者名",
-  "description": "友尽尖塔：新玩法 mod",
-  "version": "0.8.2",
+  "description": "友尽尖塔：新玩法 mod（已二合一，内含 PVP 决斗：决斗幕 / 入口事件 / 分离模式）",
+  "version": "0.10.12",
   "min_game_version": "0.107.1",
   "has_pck": true,
   "has_dll": true,
   "dependencies": [
     { "id": "STS2-RitsuLib", "min_version": "0.2.27" }
-]
-,
+  ]
+  ,
   "affects_gameplay": true
 }

@@ -1,4 +1,5 @@
 using System.Reflection;
+using HarmonyLib;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Modding;
 using MegaCrit.Sts2.Core.Models;
@@ -61,11 +62,39 @@ public class Entry
         // （随机稀有药水，不再固定出现在每间商店）。
         BlessedSpringPotion.EnsureLocalized();
         SmokeBombPotion.EnsureLocalized();
+
+        // 分离模式开局遗物「苹果」的名字/描述（这里只是抢个早，真正生效靠 LateLocalization 的覆盖式注入）。
+        AppleRelic.EnsureLocalized();
+
+        // 烟雾弹「脱战但不死」：Creature.get_IsAlive 后置补丁 + 脱战集合（详见 SmokeBombEscape.cs）。
+        SmokeBombEscapePatches.Apply();
         BlessedSpringShopPatch.Apply();
+
+        // 第三方 mod 兼容：薄荷尖塔（Minty Spire 2）在背叛 PvP 里会把队友当怪物去读
+        // `Creature.Monster`（玩家为 null）→ 血条回调里 NRE。这里在背叛战斗期间把它的
+        // 「受到的伤害」统计按死（设置项：建筑师的挑拨 → 屏蔽伤害统计）。没装就什么都不做。
+        // 详见 Scripts\compat\MintySpire2Compat.cs。
+        MintySpire2Compat.Apply();
+
+        // 多人专属卡 ×10 + 自写能力的文本：挂 LocManager 的后置补丁来注入（覆盖式）。
+        // ⚠ 不能在 Init 里直接 merge —— 这时 LocManager 还没建好，是空转（详见 LateLocalization.cs 顶部注释）。
+        LateLocalizationPatches.Apply();
 
         // 新玩法：多人局里所有玩家共用一条血池、一个钱包。
         SharedVitalsPatches.Apply();
         SharedEnergyPatches.Apply();
+
+        // 新玩法：拖动队友（阶段 1 · 纯本地 + 阶段 2 · 甩飞事件广播）。
+        // 窗口 = 我结束回合之后、队友还没结束的那段；按住左键抓立绘，
+        // 松手甩出去、撞屏幕边反弹、3 秒后瞬移回原位。
+        // 同步走 RitsuLib 的 Sidecar（Unreliable/BestEffort/不缓冲）——
+        // 丢一条只是对面少看一次，不影响任何状态。
+        TeammateDrag.Init();
+        TeammateDragSync.Init();
+
+        // 右键互动（Q弹 + 右键攻击特效）已剥离成独立 mod「弹弹弹」
+        // （id = boingboing，源码在 D:\RightClickParty）。
+        // 这里不再初始化它们 —— 两份都开着的话，同一次右键会被两边各播一遍。
 
         // 新玩法：任务模式（每人每层 3 个任务，关底随 Boss 奖励结算）。
         // 阶段 1 只做生成 + 显示；进度钩子与奖励挂载在后续阶段接。
@@ -77,8 +106,23 @@ public class Entry
         // 修佩尔之眼被 Watcher mod 的闸门挡住导致"每回合都送额外回合"的问题。
         PaelsEyeFixPatches.Apply();
 
+        // 手速模式第一轮保护：所有玩家都还没结束第二个回合时，双方都不掉血。
+        SpeedFirstTurnGuardPatches.Apply();
+
         // 建筑师最后那句台词的兜底文本。
         // 注意它走的是 "ancients" 表（建筑师自己的表），不是事件用的 "events" 表。
         ArchitectBetrayalEvent.EnsureArchitectLines();
+
+        // 「PVP 决斗」（原独立 mod pvp_duel 0.15.1）已整棵源码并进本程序集，
+        // 装配点改在这里显式调用：设置页 / 全部 Harmony 补丁 / 决斗幕 / 入口事件。
+        // 它自己的 [ModInitializer] 特性已去掉，原因见 Scripts\PvpDuel\PvpDuelMain.cs 头注释。
+        try
+        {
+            PvpDuel.Main.Initialize();
+        }
+        catch (Exception ex)
+        {
+            Entry.Logger.Error($"PVP 决斗：装配失败 {ex}");
+        }
     }
 }
