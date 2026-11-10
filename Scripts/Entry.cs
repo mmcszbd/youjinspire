@@ -54,6 +54,10 @@ public class Entry
         // 不改的话它们指向不存在的贴图，原版设置头顶气泡时会抛异常，把火堆流程打断。
         RestSiteIconPatch.Apply();
 
+        // 多人局左上角「自己 + 队友」那排小卡片：F7 三档显隐（正常 → 收起头像 → 整行隐藏）。
+        // 纯本地视觉，不同步、不进存档；原版那个调试键只管整排全显/全隐，这里多给一档「收起头像」。
+        PartyRowToggle.Apply();
+
         // 把本 mod 的玩法总开关注册进游戏设置的「模组配置」分区
         // （BonModConfig 那套；没装 BonModConfig 时会自动跳过，不影响玩）。
         YouJinSettings.Register();
