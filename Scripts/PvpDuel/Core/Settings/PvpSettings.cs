@@ -120,9 +120,6 @@ public sealed class PvpSettings
 
     // ==================== 岔路（ForkedRoad）====================
 
-    /// <summary>分离模式的状态行（左上角一行小字，纯本机观测）。</summary>
-    public bool ModuleSplitStatusHud { get; set; } = true;
-
     /// <summary>
     /// 旧「回合上限」（0.10.8 起不再生效，为存档兼容只留着这个字段）。
     /// 决斗现在只打到有人倒下；血厚不厚由「血量倍数」决定（见 §4.1.3）。

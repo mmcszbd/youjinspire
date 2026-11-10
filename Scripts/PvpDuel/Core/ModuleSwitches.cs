@@ -145,9 +145,6 @@ internal static class ModuleSwitches
     /// <summary>测试用：打赢第一场战斗就当作「三幕打完」，省掉爬三幕。（⚠ 两端一致）</summary>
     public static bool SplitMeetingFastTest => SplitMeeting && Settings.ModuleSplitMeetingFastTest;
 
-    /// <summary>分离模式的状态行（纯本机观测，和诊断一样不受主开关约束）。</summary>
-    public static bool SplitStatusHud => Settings.ModuleSplitStatusHud;
-
     /// <summary>给启动日志用的一行摘要。</summary>
     public static string Describe()
     {

@@ -47,7 +47,6 @@ public static class Main
         // （YouJinSettings.Register 链尾的 .AddDuelModeSections()，实现在 Scripts/PvpDuelUi.cs）。
         // PvpModSettingsPage 那个独立页保留文件但不再调用 —— 否则设置界面里会多出一个
         // 挂着「PVP 决斗」名字的独立 tab，等于同一批开关画两遍。
-        TryStep("挂状态 HUD", SplitStatusHud.EnsureRunningDeferred);
 
         // 分离模式的坐标同步：模块开着就先把通道注册好（订阅要早，免得对面先发我们收不到）。
         if (ModuleSwitches.SplitPresence)

@@ -20,7 +20,6 @@ internal static class SplitLinkCapturePatch
         }
 
         SplitLink.Capture(__0 as INetGameService);
-        SplitStatusHud.EnsureRunning();
         SplitLink.EnsurePump();
 
         if (ModuleSwitches.SplitKeepAlive)

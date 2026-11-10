@@ -72,7 +72,6 @@ internal static class SplitSoloRun
         // 大厅这条传输就是分离期的生命线：本体马上不会再泵它了，先抓住、守住。
         SplitLink.Capture(lobby.NetService);
         SplitLink.EnsurePump();
-        SplitStatusHud.EnsureRunning();
         SplitPresenceChannel.Initialize();
         SplitLink.Arm();
 
