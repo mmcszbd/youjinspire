@@ -91,7 +91,7 @@ internal static class ArchitectBetrayalPatches
         PatchOne(harmony, typeof(TeammateEnemySidePatch), "队友显示移到对面");
         PatchOne(harmony, typeof(EggFarRightPatch), "虫子(卵)挪到最右边");
         PatchOne(harmony, typeof(TeammateStunEndsTurnPatch), "眩晕玩家改成结束回合");
-        PatchOne(harmony, typeof(BeatingRemnantBetrayalPatch), "律动残余：这场战斗失血上限改成 100");
+        PatchOne(harmony, typeof(BeatingRemnantPvpPatch), "律动残余：PvP 战斗失血上限改成 100");
         PatchOne(harmony, typeof(ArchitectCardLimitPatch), "出牌上限：无参数 CanPlay");
         PatchOne(harmony, typeof(ArchitectCardLimitReasonPatch), "出牌上限：带原因的 CanPlay（UI）");
 
