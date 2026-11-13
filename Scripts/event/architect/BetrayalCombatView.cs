@@ -26,7 +26,6 @@ using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Models;
-using MegaCrit.Sts2.Core.Models.Singleton;
 using MegaCrit.Sts2.Core.Runs;
 
 namespace YouJin.Scripts;
@@ -245,7 +244,8 @@ internal sealed class BetrayalCombatView : ICombatState, ICardScope
 
     public IReadOnlyList<ModifierModel> Modifiers => _state.Modifiers;
 
-    public MultiplayerScalingModel MultiplayerScalingModel => _state.MultiplayerScalingModel!;
+    /// <summary>0.113 起 <see cref="ICombatState"/> 要求暴露本场生效的 RunModel 列表，原样转发。</summary>
+    public IReadOnlyList<RunModel> RunModels => _state.RunModels;
 
     public int RoundNumber
     {

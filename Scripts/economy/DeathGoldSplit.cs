@@ -28,6 +28,7 @@ using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Gold;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
+using MegaCrit.Sts2.Core.Models;
 using STS2RitsuLib.Interop.AutoRegistration;
 using STS2RitsuLib.Models;
 
@@ -44,6 +45,7 @@ public class DeathGoldSplitModel : HookedSingletonModel
     public override async Task AfterDeath(
         PlayerChoiceContext choiceContext,
         Creature creature,
+        CardModel? source,
         bool wasRemovalPrevented,
         float deathAnimLength)
     {

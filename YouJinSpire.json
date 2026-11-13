@@ -1,10 +1,10 @@
 {
   "id": "youjin",
   "name": "友尽尖塔",
-  "author": "作者名",
-  "description": "友尽尖塔：新玩法 mod（已二合一，内含 PVP 决斗：决斗幕 / 入口事件 / 分离模式）",
+  "author": "作名者",
+  "description": "贪婪模式，共享模式，任务模式，分离模式，两种pvp",
   "version": "0.10.12",
-  "min_game_version": "0.107.1",
+  "min_game_version": "0.113.0",
   "has_pck": true,
   "has_dll": true,
   "dependencies": [

@@ -23,15 +23,14 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
     <!-- 改成你的杀戮尖塔2目录 -->
-    <Sts2Dir>D:\Slay the Spire 2</Sts2Dir>
+    <Sts2Dir>D:\SteamLibrary\steamapps\common\Slay the Spire 2</Sts2Dir>
     <Sts2DataDir>$(Sts2Dir)\data_sts2_windows_x86_64</Sts2DataDir>
 
     <!--
-      ⚠ 两份游戏装的是**不同游戏版本**，各自的 dll 不能混用：
-        · D:\Slay the Spire 2                                    → 0.111.0（默认配置 Debug/Release）
-        · D:\SteamLibrary\steamapps\common\Slay the Spire 2      → 0.107.1（配置 Debug107/Release107）
-      所以**不再做"互相镜像复制"**（否则编 0.111 会把 0.107 那份的 dll 覆盖掉，
-      那边一启动就是各种黑屏/功能失效）。
+      ⚠ 只面向 Steam 那份安装（2026-11-13 已更新到 0.113.0）：
+        · D:\SteamLibrary\steamapps\common\Slay the Spire 2 → 0.113.0（所有配置都编这份）
+      旧的 D:\Slay the Spire 2 是 0.111.0 的开发副本，不再是构建目标；
+      Debug107 / Release107 那套 0.107 配置已随版本下线删除。
       要往别的目录多复制一份时，用命令行指定：/p:Sts2MirrorDir="<路径>"
     -->
     <Sts2MirrorDir Condition="'$(Sts2MirrorDir)' == ''"></Sts2MirrorDir>
@@ -51,28 +50,18 @@
     以后换游戏版本，只改下面这一行 RitsuLibReferenceTarget 即可。
   -->
   <PropertyGroup>
-    <RitsuLibReferenceTarget>0.111.0</RitsuLibReferenceTarget>
+    <RitsuLibReferenceTarget>0.113.0</RitsuLibReferenceTarget>
   </PropertyGroup>
 
   <!--
-    ★ 多版本编译：同一份源码，按"配置名"各出一份 dll
-        Debug / Release        → 游戏 0.111.0（D:\Slay the Spire 2）
-        Debug107 / Release107  → 游戏 0.107.1（Steam 库里那份）
-      用法：
-        dotnet build youjin.csproj -c Debug       ← 编 0.111，部署到 D:\Slay the Spire 2
-        dotnet build youjin.csproj -c Debug107    ← 编 0.107，部署到 Steam 那份
-      ⚠ 两个版本的 dll 不能混用：0.107 的客户端 + 0.111 的 dll（或反过来）会出现
-        各种莫名其妙的问题（黑屏、加入失败、功能失效）。发布/拷给别人时按版本分开发。
+    RitsuLib 现在装在创意工坊目录里（游戏本体目录下已经没有 mods\STS2-RitsuLib）。
+    要换工坊下载位置，只改下面这一行 RitsuLibDir。
   -->
-  <PropertyGroup Condition="'$(Configuration)' == 'Debug107' or '$(Configuration)' == 'Release107'">
-    <Sts2Dir>D:\SteamLibrary\steamapps\common\Slay the Spire 2</Sts2Dir>
-    <Sts2DataDir>$(Sts2Dir)\data_sts2_windows_x86_64</Sts2DataDir>
-    <!-- 这份本身就是"要部署的目标"，不要再镜像到别的安装（否则会覆盖 0.111 那份） -->
-    <Sts2MirrorDir></Sts2MirrorDir>
-    <RitsuLibReferenceTarget>0.107.1</RitsuLibReferenceTarget>
+  <PropertyGroup>
+    <RitsuLibDir Condition="'$(RitsuLibDir)' == ''">D:\SteamLibrary\steamapps\workshop\content\2868840\3747602295</RitsuLibDir>
   </PropertyGroup>
-  <Import Project="$(Sts2Dir)\mods\STS2-RitsuLib\RitsuLib.References.props"
-          Condition="Exists('$(Sts2Dir)\mods\STS2-RitsuLib\RitsuLib.References.props')" />
+  <Import Project="$(RitsuLibDir)\RitsuLib.References.props"
+          Condition="Exists('$(RitsuLibDir)\RitsuLib.References.props')" />
 
   <ItemGroup>
     <Reference Include="sts2">
@@ -86,7 +75,7 @@
     <!-- BonModConfig：游戏设置里的"模组配置"框架（FreeLoadout / AutoAnthony 等都用它挂设置）。
          我们只在 YouJinSettings 里通过 try/catch + 独立 Impl 方法使用它，
          所以玩家就算没装 BonModConfig，本 mod 也能正常加载，只是没有设置界面。 -->
-    <Reference Include="BonModConfig">
+    <Reference Include="BonModConfig" Condition="Exists('$(Sts2Dir)\mods\3749062616\BonModConfig.dll')">
       <HintPath>$(Sts2Dir)\mods\3749062616\BonModConfig.dll</HintPath>
       <Private>false</Private>
     </Reference>

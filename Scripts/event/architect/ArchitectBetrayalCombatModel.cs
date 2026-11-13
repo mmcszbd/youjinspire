@@ -29,6 +29,7 @@ using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
+using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Rooms;
@@ -530,6 +531,7 @@ public sealed class ArchitectBetrayalCombatModel : HookedSingletonModel
     public override async Task AfterDeath(
         PlayerChoiceContext choiceContext,
         Creature creature,
+        CardModel? source,
         bool wasRemovalPrevented,
         float deathAnimLength)
     {

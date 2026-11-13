@@ -1,9 +1,11 @@
 using MegaCrit.Sts2.Core.Commands;
+using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Helpers;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Multiplayer.Game.Lobby;
 using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Runs;
+using MegaCrit.Sts2.Core.Saves;
 using YouJin.Scripts;
 
 namespace PvpDuel.Core.SplitMode;
@@ -79,14 +81,22 @@ internal static class SplitSoloRun
             $"[SplitMode] 大厅拦截：不开始联机局，各自开单机局"
             + $"（角色={character.Id.Entry} 种子={seed} 进阶={ascensionLevel} 幕数={acts.Count}）");
 
-        var runState = await game.StartNewSingleplayerRun(
+        // 0.113 的 StartNewSingleplayerRun 收的是 Player（0.111 收的是 CharacterModel），
+        // 并且多了一个 isCustomGame 参数；Player 要自己按「角色 + 解锁状态 + 本机 NetId」造。
+        var player = Player.CreateForNewRun(
             character,
+            SaveManager.Instance.GenerateUnlockStateFromProgress(),
+            lobby.LocalPlayer.id);
+
+        var runState = await game.StartNewSingleplayerRun(
+            player,
             shouldSave: false,
             acts,
             modifiers,
             seed,
             GameMode.Standard,
-            ascensionLevel);
+            isCustomGame: false,
+            ascensionLevel: ascensionLevel);
 
         ModInfo.Info("[SplitMode] 大厅拦截：自己的单机局已开始（连接留着，坐标照发）");
 

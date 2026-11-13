@@ -244,7 +244,12 @@ public static class QuestService
         }
 
         // 打乱展示顺序：抽的时候角色任务固定在最后一个位置，展示时不一定排最后。
-        rng.Shuffle(picked);
+        // 0.113 的 Rng 已经没有 Shuffle(IList<T>) 了，这里就地做 Fisher-Yates（走同一个 Rng，仍然可复现）。
+        for (var i = picked.Count - 1; i > 0; i--)
+        {
+            var j = rng.NextInt(i + 1);
+            (picked[i], picked[j]) = (picked[j], picked[i]);
+        }
 
         book.ActIndex = actIndex;
         book.Quests = picked.Select(def => new QuestProgress
