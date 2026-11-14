@@ -115,7 +115,15 @@ internal static class EventOptionSyncDiagPatch
     }
 
     /// <summary>离场对账那一发：把四份事件的收尾状态一次性打出来（护栏的观测点）。</summary>
-    [HarmonyPatch(typeof(ChecksumTracker), "GenerateChecksum")]
+    // 0.113 的 ChecksumTracker 有两个同名重载：
+    //   GenerateChecksum(string context, GameAction? action)
+    //   GenerateChecksum(NetFullCombatState state)
+    // 只写方法名时 Harmony 判不出目标（日志里的 “Ambiguous match”），
+    // 所以这里显式给出参数类型，钉死带 context 的那一个。
+    [HarmonyPatch(
+        typeof(ChecksumTracker),
+        nameof(ChecksumTracker.GenerateChecksum),
+        new[] { typeof(string), typeof(GameAction) })]
     [HarmonyPostfix]
     private static void AfterGenerateChecksum(string context)
     {
